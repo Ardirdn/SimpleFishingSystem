@@ -1017,6 +1017,7 @@ end)
 -- ==================== PROXIMITY PROMPT SETUP ====================
 
 local function setupProximityPrompt()
+	task.wait(3)
 	local fishermanShop = workspace:FindFirstChild("FishermanShop")
 	
 	if not fishermanShop then
