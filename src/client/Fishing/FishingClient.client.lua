@@ -2642,7 +2642,18 @@ local function showNewDiscoveryBanner(fishID, fishData, quantity)
 
 	local rarityColor = FishDiscoveryColors[fishData.Rarity] or FishDiscoveryColors.Common
 	local rarityText = fishData.Rarity:upper()
+	
+	-- Rarity glow colors (brighter for glow effects)
+	local rarityGlow = {
+		Common = Color3.fromRGB(200, 200, 210),
+		Uncommon = Color3.fromRGB(100, 220, 160),
+		Rare = Color3.fromRGB(120, 180, 255),
+		Epic = Color3.fromRGB(180, 130, 255),
+		Legendary = Color3.fromRGB(255, 215, 50)
+	}
+	local glowColor = rarityGlow[fishData.Rarity] or rarityGlow.Common
 
+	-- ========== BACKDROP WITH RADIAL GRADIENT ==========
 	local backdrop = Instance.new("Frame")
 	backdrop.Size = UDim2.new(1, 0, 1, 0)
 	backdrop.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -2650,89 +2661,214 @@ local function showNewDiscoveryBanner(fishID, fishData, quantity)
 	backdrop.BorderSizePixel = 0
 	backdrop.Parent = bannerGui
 
+	-- ========== ANIMATED ROTATING RAYS ==========
+	local raysContainer = Instance.new("Frame")
+	raysContainer.Size = UDim2.new(2, 0, 2, 0)
+	raysContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+	raysContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+	raysContainer.BackgroundTransparency = 1
+	raysContainer.Parent = bannerGui
+	raysContainer.ClipsDescendants = false
+
+	-- Create rotating rays
+	local numRays = 12
+	for i = 1, numRays do
+		local ray = Instance.new("Frame")
+		ray.Size = UDim2.new(0.02, 0, 1.5, 0)
+		ray.Position = UDim2.new(0.5, 0, 0.5, 0)
+		ray.AnchorPoint = Vector2.new(0.5, 1)
+		ray.Rotation = (i - 1) * (360 / numRays)
+		ray.BackgroundTransparency = 0.85
+		ray.BorderSizePixel = 0
+		ray.Parent = raysContainer
+		
+		-- Gradient for ray
+		local rayGradient = Instance.new("UIGradient")
+		rayGradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, glowColor),
+			ColorSequenceKeypoint.new(1, glowColor)
+		})
+		rayGradient.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.3, 0.7),
+			NumberSequenceKeypoint.new(1, 0)
+		})
+		rayGradient.Rotation = 90
+		rayGradient.Parent = ray
+	end
+
+	-- Animate rays rotation
+	task.spawn(function()
+		local rotation = 0
+		while raysContainer.Parent do
+			rotation = rotation + 0.3
+			raysContainer.Rotation = rotation
+			task.wait(0.016)
+		end
+	end)
+
+	-- ========== MAIN CARD - GLASSMORPHISM STYLE ==========
 	local card = Instance.new("Frame")
-	card.Size = UDim2.new(0.55, 0, 0.38, 0)
+	card.Size = UDim2.new(0.5, 0, 0.42, 0)
 	card.Position = UDim2.new(0.5, 0, 0.5, 0)
 	card.AnchorPoint = Vector2.new(0.5, 0.5)
-	card.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-	card.BackgroundTransparency = 0.1
+	card.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+	card.BackgroundTransparency = 0.15
 	card.BorderSizePixel = 0
 	card.ClipsDescendants = true
 	card.Parent = bannerGui
 	card.Visible = false
 
 	local aspectRatio = Instance.new("UIAspectRatioConstraint")
-	aspectRatio.AspectRatio = 1.8
+	aspectRatio.AspectRatio = 1.6
 	aspectRatio.Parent = card
 
 	local sizeConstraint = Instance.new("UISizeConstraint")
-	sizeConstraint.MinSize = Vector2.new(380, 210)
-	sizeConstraint.MaxSize = Vector2.new(650, 360)
+	sizeConstraint.MinSize = Vector2.new(420, 260)
+	sizeConstraint.MaxSize = Vector2.new(700, 440)
 	sizeConstraint.Parent = card
 
 	local cardCorner = Instance.new("UICorner")
-	cardCorner.CornerRadius = UDim.new(0, 16)
+	cardCorner.CornerRadius = UDim.new(0, 20)
 	cardCorner.Parent = card
 
+	-- Glowing border stroke
 	local cardStroke = Instance.new("UIStroke")
-	cardStroke.Color = rarityColor
-	cardStroke.Thickness = 2
-	cardStroke.Transparency = 0.2
+	cardStroke.Color = glowColor
+	cardStroke.Thickness = 3
+	cardStroke.Transparency = 0.3
 	cardStroke.Parent = card
 
-	-- Left side with viewport for 3D model
+	-- Inner glow gradient overlay
+	local innerGlow = Instance.new("Frame")
+	innerGlow.Size = UDim2.new(1, 0, 1, 0)
+	innerGlow.BackgroundTransparency = 1
+	innerGlow.BorderSizePixel = 0
+	innerGlow.Parent = card
+
+	local innerGlowGradient = Instance.new("UIGradient")
+	innerGlowGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, glowColor),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(1, glowColor)
+	})
+	innerGlowGradient.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.95),
+		NumberSequenceKeypoint.new(0.5, 0.98),
+		NumberSequenceKeypoint.new(1, 0.95)
+	})
+	innerGlowGradient.Rotation = 45
+	innerGlowGradient.Parent = innerGlow
+
+	-- ========== SHINE SWEEP EFFECT ==========
+	local shine = Instance.new("Frame")
+	shine.Size = UDim2.new(0.3, 0, 1.5, 0)
+	shine.Position = UDim2.new(-0.3, 0, -0.25, 0)
+	shine.Rotation = 25
+	shine.BackgroundTransparency = 0.7
+	shine.BorderSizePixel = 0
+	shine.ZIndex = 10
+	shine.Parent = card
+
+	local shineGradient = Instance.new("UIGradient")
+	shineGradient.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255))
+	shineGradient.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.4, 0.85),
+		NumberSequenceKeypoint.new(0.6, 0.85),
+		NumberSequenceKeypoint.new(1, 1)
+	})
+	shineGradient.Parent = shine
+
+	-- ========== LEFT SIDE - 3D MODEL SHOWCASE ==========
 	local visualContainer = Instance.new("Frame")
-	visualContainer.Size = UDim2.new(0.48, 0, 1, 0)
+	visualContainer.Size = UDim2.new(0.45, 0, 1, 0)
 	visualContainer.BackgroundTransparency = 1
 	visualContainer.Parent = card
 
+	-- Circular glow behind fish
+	local fishGlow = Instance.new("Frame")
+	fishGlow.Size = UDim2.new(0.85, 0, 0.85, 0)
+	fishGlow.Position = UDim2.new(0.5, 0, 0.5, 0)
+	fishGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+	fishGlow.BackgroundColor3 = glowColor
+	fishGlow.BackgroundTransparency = 0.85
+	fishGlow.BorderSizePixel = 0
+	fishGlow.Parent = visualContainer
+
+	local fishGlowCorner = Instance.new("UICorner")
+	fishGlowCorner.CornerRadius = UDim.new(1, 0)
+	fishGlowCorner.Parent = fishGlow
+
 	local viewport = Instance.new("ViewportFrame")
-	viewport.Size = UDim2.new(1.3, 0, 1.3, 0)
-	viewport.Position = UDim2.new(0, -15, -0.15, 0)
+	viewport.Size = UDim2.new(1.2, 0, 1.2, 0)
+	viewport.Position = UDim2.new(0.5, 0, 0.5, 0)
+	viewport.AnchorPoint = Vector2.new(0.5, 0.5)
 	viewport.BackgroundTransparency = 1
-	viewport.Ambient = Color3.fromRGB(200, 200, 200)
+	viewport.Ambient = Color3.fromRGB(180, 180, 180)
 	viewport.LightColor = Color3.fromRGB(255, 255, 255)
 	viewport.LightDirection = Vector3.new(-1, -1, -0.5)
 	viewport.Parent = visualContainer
 
-	-- Right side info
+	-- ========== RIGHT SIDE - INFO PANEL ==========
 	local infoContainer = Instance.new("Frame")
-	infoContainer.Size = UDim2.new(0.52, 0, 1, 0)
-	infoContainer.Position = UDim2.new(0.48, 0, 0, 0)
+	infoContainer.Size = UDim2.new(0.55, 0, 1, 0)
+	infoContainer.Position = UDim2.new(0.45, 0, 0, 0)
 	infoContainer.BackgroundTransparency = 1
 	infoContainer.Parent = card
 
 	local infoPadding = Instance.new("UIPadding")
-	infoPadding.PaddingTop = UDim.new(0, 18)
-	infoPadding.PaddingBottom = UDim.new(0, 18)
-	infoPadding.PaddingRight = UDim.new(0, 20)
-	infoPadding.PaddingLeft = UDim.new(0, 8)
+	infoPadding.PaddingTop = UDim.new(0, 25)
+	infoPadding.PaddingBottom = UDim.new(0, 25)
+	infoPadding.PaddingRight = UDim.new(0, 25)
+	infoPadding.PaddingLeft = UDim.new(0, 10)
 	infoPadding.Parent = infoContainer
 
 	local listLayout = Instance.new("UIListLayout")
 	listLayout.FillDirection = Enum.FillDirection.Vertical
 	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	listLayout.Padding = UDim.new(0, 6)
+	listLayout.Padding = UDim.new(0, 8)
 	listLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	listLayout.Parent = infoContainer
 
+	-- ========== HEADER - "NEW DISCOVERY" WITH SPARKLE ANIMATION ==========
+	local headerContainer = Instance.new("Frame")
+	headerContainer.Size = UDim2.new(1, 0, 0, 26)
+	headerContainer.BackgroundTransparency = 1
+	headerContainer.LayoutOrder = 1
+	headerContainer.Parent = infoContainer
+
 	local headerLabel = Instance.new("TextLabel")
-	headerLabel.Text = "✨ NEW DISCOVERY ✨"
-	headerLabel.Size = UDim2.new(1, 0, 0, 20)
+	headerLabel.Text = "⭐ NEW DISCOVERY ⭐"
+	headerLabel.Size = UDim2.new(1, 0, 1, 0)
 	headerLabel.BackgroundTransparency = 1
 	headerLabel.Font = Enum.Font.GothamBlack
-	headerLabel.TextSize = 12
-	headerLabel.TextColor3 = Color3.fromRGB(255, 255, 150)
+	headerLabel.TextSize = 16
+	headerLabel.TextColor3 = Color3.fromRGB(255, 230, 100)
 	headerLabel.TextXAlignment = Enum.TextXAlignment.Left
-	headerLabel.LayoutOrder = 1
-	headerLabel.Parent = infoContainer
+	headerLabel.Parent = headerContainer
 
+	-- Animate header text glow
+	task.spawn(function()
+		local brightness = 0
+		local direction = 1
+		while headerLabel.Parent do
+			brightness = brightness + direction * 0.05
+			if brightness >= 1 then direction = -1 end
+			if brightness <= 0 then direction = 1 end
+			local glow = math.floor(200 + 55 * brightness)
+			headerLabel.TextColor3 = Color3.fromRGB(255, glow, 80 + math.floor(20 * brightness))
+			task.wait(0.03)
+		end
+	end)
+
+	-- ========== FISH NAME - LARGE BOLD TEXT ==========
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Text = fishData.Name
-	nameLabel.Size = UDim2.new(1, 0, 0, 40)
+	nameLabel.Size = UDim2.new(1, 0, 0, 50)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Font = Enum.Font.GothamBlack
-	nameLabel.TextSize = 28
+	nameLabel.TextSize = 32
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.TextWrapped = true
@@ -2740,59 +2876,109 @@ local function showNewDiscoveryBanner(fishID, fishData, quantity)
 	nameLabel.LayoutOrder = 2
 	nameLabel.Parent = infoContainer
 
-	local metaContainer = Instance.new("Frame")
-	metaContainer.Size = UDim2.new(1, 0, 0, 28)
-	metaContainer.BackgroundTransparency = 1
-	metaContainer.LayoutOrder = 3
-	metaContainer.Parent = infoContainer
+	-- Text stroke for depth
+	local nameStroke = Instance.new("UIStroke")
+	nameStroke.Color = Color3.fromRGB(0, 0, 0)
+	nameStroke.Thickness = 1.5
+	nameStroke.Transparency = 0.5
+	nameStroke.Parent = nameLabel
 
-	local metaLayout = Instance.new("UIListLayout")
-	metaLayout.FillDirection = Enum.FillDirection.Horizontal
-	metaLayout.Padding = UDim.new(0, 10)
-	metaLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	metaLayout.Parent = metaContainer
+	-- ========== RARITY & PRICE BADGES ==========
+	local badgesContainer = Instance.new("Frame")
+	badgesContainer.Size = UDim2.new(1, 0, 0, 32)
+	badgesContainer.BackgroundTransparency = 1
+	badgesContainer.LayoutOrder = 3
+	badgesContainer.Parent = infoContainer
 
+	local badgesLayout = Instance.new("UIListLayout")
+	badgesLayout.FillDirection = Enum.FillDirection.Horizontal
+	badgesLayout.Padding = UDim.new(0, 12)
+	badgesLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	badgesLayout.Parent = badgesContainer
+
+	-- Rarity Badge with gradient
 	local rarityBadge = Instance.new("Frame")
 	rarityBadge.BackgroundColor3 = rarityColor
-	rarityBadge.Size = UDim2.new(0, 85, 1, 0)
-	rarityBadge.Parent = metaContainer
+	rarityBadge.Size = UDim2.new(0, 95, 1, 0)
+	rarityBadge.Parent = badgesContainer
 
-	local rarityCorner = Instance.new("UICorner")
-	rarityCorner.CornerRadius = UDim.new(0, 6)
-	rarityCorner.Parent = rarityBadge
+	local rarityBadgeCorner = Instance.new("UICorner")
+	rarityBadgeCorner.CornerRadius = UDim.new(0.3, 0)
+	rarityBadgeCorner.Parent = rarityBadge
+
+	local rarityBadgeGradient = Instance.new("UIGradient")
+	rarityBadgeGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 200, 200))
+	})
+	rarityBadgeGradient.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.7),
+		NumberSequenceKeypoint.new(0.5, 0.85),
+		NumberSequenceKeypoint.new(1, 0.7)
+	})
+	rarityBadgeGradient.Rotation = 90
+	rarityBadgeGradient.Parent = rarityBadge
 
 	local rarityTextLabel = Instance.new("TextLabel")
 	rarityTextLabel.Size = UDim2.new(1, 0, 1, 0)
 	rarityTextLabel.BackgroundTransparency = 1
-	rarityTextLabel.Text = rarityText
-	rarityTextLabel.Font = Enum.Font.GothamBold
-	rarityTextLabel.TextSize = 11
+	rarityTextLabel.Text = "✦ " .. rarityText
+	rarityTextLabel.Font = Enum.Font.GothamBlack
+	rarityTextLabel.TextSize = 13
 	rarityTextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	rarityTextLabel.Parent = rarityBadge
 
-	local priceTag = Instance.new("TextLabel")
-	priceTag.Text = "💰 $" .. tostring(fishData.Price or 0)
-	priceTag.AutomaticSize = Enum.AutomaticSize.X
-	priceTag.Size = UDim2.new(0, 0, 1, 0)
-	priceTag.BackgroundTransparency = 1
-	priceTag.Font = Enum.Font.GothamBold
-	priceTag.TextColor3 = FishDiscoveryColors.Success
-	priceTag.TextSize = 16
-	priceTag.Parent = metaContainer
+	local rarityTextStroke = Instance.new("UIStroke")
+	rarityTextStroke.Color = Color3.fromRGB(0, 0, 0)
+	rarityTextStroke.Thickness = 1
+	rarityTextStroke.Transparency = 0.5
+	rarityTextStroke.Parent = rarityTextLabel
 
+	-- Price Tag with coin icon
+	local priceTag = Instance.new("Frame")
+	priceTag.Size = UDim2.new(0, 100, 1, 0)
+	priceTag.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
+	priceTag.Parent = badgesContainer
+
+	local priceCorner = Instance.new("UICorner")
+	priceCorner.CornerRadius = UDim.new(0.3, 0)
+	priceCorner.Parent = priceTag
+
+	local priceText = Instance.new("TextLabel")
+	priceText.Size = UDim2.new(1, 0, 1, 0)
+	priceText.BackgroundTransparency = 1
+	priceText.Text = "💰 $" .. tostring(fishData.Price or 0)
+	priceText.Font = Enum.Font.GothamBold
+	priceText.TextSize = 15
+	priceText.TextColor3 = Color3.fromRGB(100, 220, 150)
+	priceText.Parent = priceTag
+
+	-- ========== HINT TEXT AT BOTTOM ==========
 	local hintLabel = Instance.new("TextLabel")
-	hintLabel.Text = "Tap to continue"
-	hintLabel.Size = UDim2.new(1, 0, 0, 18)
-	hintLabel.Position = UDim2.new(0.5, 0, 0.92, 0)
+	hintLabel.Text = "🎣 TAP ANYWHERE TO CONTINUE"
+	hintLabel.Size = UDim2.new(1, 0, 0, 22)
+	hintLabel.Position = UDim2.new(0.5, 0, 0.93, 0)
 	hintLabel.AnchorPoint = Vector2.new(0.5, 0.5)
 	hintLabel.BackgroundTransparency = 1
 	hintLabel.Font = Enum.Font.GothamMedium
-	hintLabel.TextSize = 11
+	hintLabel.TextSize = 12
 	hintLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-	hintLabel.TextTransparency = 0.4
+	hintLabel.TextTransparency = 0.3
 	hintLabel.Parent = card
 
-	-- Try to load 3D fish model
+	-- Pulse animation for hint
+	task.spawn(function()
+		while hintLabel.Parent do
+			TweenService:Create(hintLabel, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), 
+				{TextTransparency = 0.6}):Play()
+			task.wait(0.8)
+			TweenService:Create(hintLabel, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), 
+				{TextTransparency = 0.2}):Play()
+			task.wait(0.8)
+		end
+	end)
+
+	-- ========== LOAD 3D FISH MODEL ==========
 	local FishModelsFolder = ReplicatedStorage:FindFirstChild("FishModels") 
 		or (ReplicatedStorage:FindFirstChild("Models") and ReplicatedStorage.Models:FindFirstChild("Fish"))
 		or (ReplicatedStorage:FindFirstChild("Assets") and ReplicatedStorage.Assets:FindFirstChild("FishModels"))
@@ -2816,27 +3002,28 @@ local function showNewDiscoveryBanner(fishID, fishData, quantity)
 			local modelSize = clonedModel:GetExtentsSize()
 			local maxDim = math.max(modelSize.X, modelSize.Y, modelSize.Z)
 			
-			local fov = 65
-			local fillFactor = 1.15
+			local fov = 60
+			local fillFactor = 1.2
 			local distance = (maxDim / 2) / math.tan(math.rad(fov / 2)) * fillFactor
 			
 			local cam = Instance.new("Camera")
 			cam.FieldOfView = fov
 			
-			local angle = math.rad(20)
-			local camX = distance * math.cos(angle) * 0.9
-			local camY = maxDim * 0.15
-			local camZ = distance * math.sin(angle) * 0.9 + distance * 0.5
+			local angle = math.rad(25)
+			local camX = distance * math.cos(angle) * 0.85
+			local camY = maxDim * 0.1
+			local camZ = distance * math.sin(angle) * 0.85 + distance * 0.4
 			
 			cam.CFrame = CFrame.new(Vector3.new(camX, camY, camZ), Vector3.new(0, 0, 0))
 			cam.Parent = viewport
 			viewport.CurrentCamera = cam
 
+			-- Smooth fish rotation
 			task.spawn(function()
 				while viewport.Parent do
 					if clonedModel and clonedModel.Parent then
 						local currentCF = clonedModel:GetPivot()
-						clonedModel:PivotTo(currentCF * CFrame.Angles(0, math.rad(0.8), 0))
+						clonedModel:PivotTo(currentCF * CFrame.Angles(0, math.rad(0.6), 0))
 					end
 					task.wait(0.016)
 				end
@@ -2844,19 +3031,42 @@ local function showNewDiscoveryBanner(fishID, fishData, quantity)
 		end
 	end
 
-	-- Animations
-	TweenService:Create(backdrop, TweenInfo.new(0.5), {BackgroundTransparency = 0.4}):Play()
+	-- ========== ENTRANCE ANIMATIONS ==========
+	-- Fade in backdrop
+	TweenService:Create(backdrop, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {BackgroundTransparency = 0.5}):Play()
 
+	-- Scale up card with bounce
 	card.Size = UDim2.new(0, 0, 0, 0)
 	card.Visible = true
 	
 	local popTween = TweenService:Create(card, 
-		TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-		{Size = UDim2.new(0.55, 0, 0.38, 0)}
+		TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{Size = UDim2.new(0.5, 0, 0.42, 0)}
 	)
 	popTween:Play()
 
-	-- Close button
+	-- Shine sweep animation (delayed)
+	task.delay(0.5, function()
+		if shine.Parent then
+			TweenService:Create(shine, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+				{Position = UDim2.new(1.1, 0, -0.25, 0)}):Play()
+		end
+	end)
+
+	-- Animate stroke glow
+	task.spawn(function()
+		local pulseDir = 1
+		local transparency = 0.3
+		while cardStroke.Parent do
+			transparency = transparency + pulseDir * 0.02
+			if transparency >= 0.5 then pulseDir = -1 end
+			if transparency <= 0.1 then pulseDir = 1 end
+			cardStroke.Transparency = transparency
+			task.wait(0.03)
+		end
+	end)
+
+	-- ========== CLOSE BUTTON (FULLSCREEN) ==========
 	local closeButton = Instance.new("TextButton")
 	closeButton.Size = UDim2.new(1, 0, 1, 0)
 	closeButton.BackgroundTransparency = 1
@@ -2869,9 +3079,12 @@ local function showNewDiscoveryBanner(fishID, fishData, quantity)
 		if closing then return end
 		closing = true
 		
+		-- Exit animations
 		TweenService:Create(backdrop, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+		TweenService:Create(raysContainer, TweenInfo.new(0.3), {Size = UDim2.new(0, 0, 0, 0)}):Play()
+		
 		local closeTween = TweenService:Create(card, 
-			TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), 
+			TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.In), 
 			{Size = UDim2.new(0, 0, 0, 0)}
 		)
 		closeTween:Play()
