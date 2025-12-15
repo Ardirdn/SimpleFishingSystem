@@ -254,10 +254,11 @@ local lastTapTime = tick()
 local startTime = 0
 
 
-local cameraShakeEnabled = true      -- untuk enable/disable global, bisa ubah di UI/config
-local shakeMagnitude = 0.15          -- besar getaran (misal 0.2, dicoba-coba)
-local shakeSpeed = 20               -- kecepatan getaran (misal 20)
-local isShaking = false           -- Untuk menyimpan posisi awal camera
+-- ✅ DISABLED: Camera cinematic effects
+local cameraShakeEnabled = false     -- DISABLED: No camera shake
+local shakeMagnitude = 0          
+local shakeSpeed = 0               
+local isShaking = false           
 local pullCam = false
 local pullCamConn = nil
 
@@ -295,149 +296,26 @@ local throwCamTargetPos = nil
 local throwCamSavedCFrame = nil  -- CFrame kamera LENGKAP sebelum throw (untuk restore)
 local throwCamSavedPosition = nil  -- Posisi kamera yang di-lock saat throw
 
+-- ✅ DISABLED: Throw camera look-at effect
 function startThrowCameraLookAt(targetPos)
-	if throwCamActive then return end
-	throwCamActive = true
-	throwCamTargetPos = targetPos
-	
-	-- ✅ SAVE current camera CFrame (FULL) - for restoring later
-	throwCamSavedCFrame = camera.CFrame
-	throwCamSavedPosition = camera.CFrame.Position
-	
-	print("📷 [CAMERA] Starting throw look-at (locked position)")
-	
-	-- Set camera to Scriptable so player can't move it
-	camera.CameraType = Enum.CameraType.Scriptable
-	
-	if throwCamConn then throwCamConn:Disconnect() end
-	
-	throwCamConn = RunService.RenderStepped:Connect(function()
-		if not throwCamActive then return end
-		if not throwCamSavedPosition then return end
-		
-		local floaterPart = currentFloater and (currentFloater:IsA("Model") and currentFloater.PrimaryPart or currentFloater)
-		
-		-- Use floater position if available, otherwise use target position
-		local lookTarget
-		if floaterPart then
-			lookTarget = floaterPart.Position
-		elseif throwCamTargetPos then
-			lookTarget = throwCamTargetPos
-		else
-			return
-		end
-		
-		-- Create CFrame: LOCKED SAVED POSITION, looking at floater
-		local targetCFrame = CFrame.new(throwCamSavedPosition, lookTarget)
-		
-		-- Smoothly rotate camera towards floater
-		camera.CFrame = camera.CFrame:Lerp(targetCFrame, 0.12)
-	end)
+	-- Camera cinematic disabled - do nothing
+	return
 end
 
 function stopThrowCameraLookAt()
-	if not throwCamActive then return end
-	throwCamActive = false
-	throwCamTargetPos = nil
-	
-	print("📷 [CAMERA] Stopping throw look-at effect (smooth transition)")
-	
-	if throwCamConn then
-		throwCamConn:Disconnect()
-		throwCamConn = nil
-	end
-	
-	-- ✅ SMOOTH TRANSITION: Lerp camera back to ORIGINAL position (before throw)
-	local humanoid = Character and Character:FindFirstChild("Humanoid")
-	local savedCFrame = throwCamSavedCFrame
-	
-	if savedCFrame then
-		-- Start smooth transition using RenderStepped
-		local transitionStartTime = tick()
-		local transitionDuration = 0.5 -- Duration in seconds
-		local startCFrame = camera.CFrame
-		
-		local transitionConn
-		transitionConn = RunService.RenderStepped:Connect(function()
-			local elapsed = tick() - transitionStartTime
-			local alpha = math.min(elapsed / transitionDuration, 1)
-			
-			-- Use smooth easing (EaseOutQuad)
-			local easedAlpha = 1 - (1 - alpha) * (1 - alpha)
-			
-			-- Lerp from current position back to saved original CFrame
-			camera.CFrame = startCFrame:Lerp(savedCFrame, easedAlpha)
-			
-			-- Transition complete
-			if alpha >= 1 then
-				transitionConn:Disconnect()
-				transitionConn = nil
-				
-				-- Ensure final CFrame matches saved exactly
-				camera.CFrame = savedCFrame
-				
-				-- Now switch to Custom mode for player control
-				camera.CameraType = Enum.CameraType.Custom
-				camera.CameraSubject = humanoid
-				
-				print("📷 [CAMERA] Smooth transition complete, restored to original position")
-			end
-		end)
-	else
-		-- Fallback: No saved CFrame, just restore immediately
-		camera.CameraType = Enum.CameraType.Custom
-		camera.CameraSubject = humanoid
-	end
-	
-	throwCamSavedCFrame = nil
-	throwCamSavedPosition = nil
+	-- Camera cinematic disabled - do nothing
+	return
 end
 
+-- ✅ DISABLED: Pull camera cinematic effect
 function startPullCamera(offsetDistance, offsetSide)
-	-- SIMPAN camera state sebelum cinematic!
-	previousCameraCFrame = camera.CFrame
-	previousCameraSubject = camera.CameraSubject
-	previousMinZoom = Players.LocalPlayer.CameraMinZoomDistance
-	previousMaxZoom = Players.LocalPlayer.CameraMaxZoomDistance
-
-	pullCam = true
-	camera.CameraType = Enum.CameraType.Scriptable
-	Players.LocalPlayer.CameraMinZoomDistance = offsetDistance
-	Players.LocalPlayer.CameraMaxZoomDistance = offsetDistance
-
-	if pullCamConn then pullCamConn:Disconnect() end
-	pullCamConn = RunService.RenderStepped:Connect(function()
-		if not pullCam then return end
-		local root = Character and Character:FindFirstChild("HumanoidRootPart")
-		local floaterPart = currentFloater and (currentFloater:IsA("Model") and currentFloater.PrimaryPart or currentFloater)
-		if not root or not floaterPart then return end
-
-		local toFloater = (floaterPart.Position - root.Position).Unit
-		local perp = Vector3.new(-toFloater.Z, 0, toFloater.X)
-		local campos = root.Position - toFloater * offsetDistance + perp * offsetSide + Vector3.new(0, 3, 0)
-		camera.CFrame = CFrame.new(campos, floaterPart.Position + Vector3.new(0,2,0))
-	end)
+	-- Camera cinematic disabled - do nothing
+	return
 end
-
 
 function stopPullCamera()
-	pullCam = false
-	if pullCamConn then pullCamConn:Disconnect() end
-
-	-- Restore zoom setting lebih awal
-	Players.LocalPlayer.CameraMinZoomDistance = previousMinZoom or 0.5
-	Players.LocalPlayer.CameraMaxZoomDistance = previousMaxZoom or 14
-
-	-- Tween balik ke previousCameraCFrame selama 2 detik
-	camera.CameraType = Enum.CameraType.Scriptable
-	local tween = TweenService:Create(camera, TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {CFrame = previousCameraCFrame})
-	tween:Play()
-	tween.Completed:Connect(function()
-		-- Pastikan di-set hanya setelah tween selesai
-		camera.CFrame = previousCameraCFrame
-		camera.CameraSubject = previousCameraSubject or Character:FindFirstChild("Humanoid") or Character
-		camera.CameraType = Enum.CameraType.Custom
-	end)
+	-- Camera cinematic disabled - do nothing
+	return
 end
 
 
@@ -482,29 +360,20 @@ end
 local RunService = game:GetService("RunService")
 local shakeName = "CameraShake"
 
+-- ✅ DISABLED: Camera shake effect
 local function cameraShake(deltaTime)
-	if not isShaking then return end -- extra safety
-	local time = tick()
-	local offsetX = math.sin(time * shakeSpeed) * shakeMagnitude
-	local offsetY = math.cos(time * shakeSpeed * 1.1) * shakeMagnitude
-	local shakeOffset = Vector3.new(offsetX, offsetY, 0)
-	local cam = workspace.CurrentCamera
-	cam.CFrame = cam.CFrame * CFrame.new(shakeOffset)
+	-- Camera shake disabled - do nothing
+	return
 end
 
 local function startCameraShake()
-	if not cameraShakeEnabled then return end
-	if isShaking then return end
-	isShaking = true
-	RunService:BindToRenderStep(shakeName, Enum.RenderPriority.Camera.Value + 1, cameraShake)
+	-- Camera shake disabled - do nothing
+	return
 end
 
 local function stopCameraShake()
-	if not isShaking then return end
-	isShaking = false
-	pcall(function()
-		RunService:UnbindFromRenderStep(shakeName)
-	end)
+	-- Camera shake disabled - do nothing
+	return
 end
 
 
