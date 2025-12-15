@@ -165,7 +165,7 @@ end
 
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
-mainPanel.Size = UDim2.new(0.45, 0, 0.75, 0) -- 45% width, 75% height
+mainPanel.Size = UDim2.new(0.5, 0, 0.8, 0)
 mainPanel.Position = UDim2.new(0.5, 0, 0.5, 0)
 mainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
 mainPanel.BackgroundColor3 = COLORS.Background
@@ -173,17 +173,11 @@ mainPanel.BorderSizePixel = 0
 mainPanel.Visible = false
 mainPanel.Parent = screenGui
 
--- Maintain aspect ratio
+-- AspectRatio based on Width
 local panelAspect = Instance.new("UIAspectRatioConstraint")
-panelAspect.AspectRatio = 1.2
-panelAspect.DominantAxis = Enum.DominantAxis.Height
+panelAspect.AspectRatio = 0.85
+panelAspect.DominantAxis = Enum.DominantAxis.Width
 panelAspect.Parent = mainPanel
-
--- Size constraint for panel
-local panelSizeConstraint = Instance.new("UISizeConstraint")
-panelSizeConstraint.MinSize = Vector2.new(320, 350)
-panelSizeConstraint.MaxSize = Vector2.new(600, 650)
-panelSizeConstraint.Parent = mainPanel
 
 createCorner(16).Parent = mainPanel
 
@@ -192,21 +186,29 @@ mainStroke.Color = COLORS.Accent
 mainStroke.Thickness = 2
 mainStroke.Parent = mainPanel
 
+-- Main Panel Padding
+local mainPadding = Instance.new("UIPadding")
+mainPadding.PaddingTop = UDim.new(0.02, 0)
+mainPadding.PaddingBottom = UDim.new(0.02, 0)
+mainPadding.PaddingLeft = UDim.new(0.03, 0)
+mainPadding.PaddingRight = UDim.new(0.03, 0)
+mainPadding.Parent = mainPanel
+
 -- ==================== HEADER (ADAPTIVE) ====================
 
 local headerFrame = Instance.new("Frame")
 headerFrame.Name = "Header"
-headerFrame.Size = UDim2.new(1, 0, 0.09, 0)
+headerFrame.Size = UDim2.new(1, 0, 0.08, 0)
 headerFrame.Position = UDim2.new(0, 0, 0, 0)
 headerFrame.BackgroundColor3 = Color3.fromRGB(20, 35, 55)
 headerFrame.BorderSizePixel = 0
 headerFrame.Parent = mainPanel
 
-createCorner(16).Parent = headerFrame
+createCorner(12).Parent = headerFrame
 
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(0.7, 0, 0.8, 0)
-titleLabel.Position = UDim2.new(0.03, 0, 0.1, 0)
+titleLabel.Size = UDim2.new(0.75, 0, 0.7, 0)
+titleLabel.Position = UDim2.new(0.03, 0, 0.15, 0)
 titleLabel.BackgroundTransparency = 1
 titleLabel.Font = Enum.Font.GothamBlack
 titleLabel.Text = "🐟 FISH COLLECTION"
@@ -216,13 +218,12 @@ titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.Parent = headerFrame
 
 local titleTextConstraint = Instance.new("UITextSizeConstraint")
-titleTextConstraint.MinTextSize = 12
 titleTextConstraint.MaxTextSize = 26
 titleTextConstraint.Parent = titleLabel
 
 local closeButton = Instance.new("TextButton")
-closeButton.Size = UDim2.new(0.12, 0, 0.7, 0)
-closeButton.Position = UDim2.new(0.86, 0, 0.15, 0)
+closeButton.Size = UDim2.new(0.08, 0, 0.7, 0)
+closeButton.Position = UDim2.new(0.9, 0, 0.15, 0)
 closeButton.BackgroundColor3 = COLORS.Danger
 closeButton.BorderSizePixel = 0
 closeButton.Font = Enum.Font.GothamBold
@@ -230,6 +231,10 @@ closeButton.Text = "X"
 closeButton.TextColor3 = COLORS.Text
 closeButton.TextScaled = true
 closeButton.Parent = headerFrame
+
+local closeTextConstraint = Instance.new("UITextSizeConstraint")
+closeTextConstraint.MaxTextSize = 18
+closeTextConstraint.Parent = closeButton
 
 local closeAspect = Instance.new("UIAspectRatioConstraint")
 closeAspect.AspectRatio = 1
@@ -241,8 +246,8 @@ createCorner(8).Parent = closeButton
 
 local tabFrame = Instance.new("Frame")
 tabFrame.Name = "TabFrame"
-tabFrame.Size = UDim2.new(0.94, 0, 0.065, 0)
-tabFrame.Position = UDim2.new(0.03, 0, 0.105, 0)
+tabFrame.Size = UDim2.new(1, 0, 0.06, 0)
+tabFrame.Position = UDim2.new(0, 0, 0.1, 0)
 tabFrame.BackgroundTransparency = 1
 tabFrame.Parent = mainPanel
 
@@ -263,7 +268,6 @@ inventoryTabBtn.TextScaled = true
 inventoryTabBtn.Parent = tabFrame
 
 local invTabTextConstraint = Instance.new("UITextSizeConstraint")
-invTabTextConstraint.MinTextSize = 10
 invTabTextConstraint.MaxTextSize = 16
 invTabTextConstraint.Parent = inventoryTabBtn
 
@@ -281,7 +285,6 @@ indexTabBtn.TextScaled = true
 indexTabBtn.Parent = tabFrame
 
 local indexTabTextConstraint = Instance.new("UITextSizeConstraint")
-indexTabTextConstraint.MinTextSize = 10
 indexTabTextConstraint.MaxTextSize = 16
 indexTabTextConstraint.Parent = indexTabBtn
 
@@ -291,8 +294,8 @@ createCorner(8).Parent = indexTabBtn
 
 local sortButton = Instance.new("TextButton")
 sortButton.Name = "SortButton"
-sortButton.Size = UDim2.new(0.2, 0, 0.05, 0)
-sortButton.Position = UDim2.new(0.77, 0, 0.185, 0)
+sortButton.Size = UDim2.new(0.18, 0, 0.045, 0)
+sortButton.Position = UDim2.new(0.82, 0, 0.175, 0)
 sortButton.BackgroundColor3 = COLORS.CardBg
 sortButton.BorderSizePixel = 0
 sortButton.Font = Enum.Font.GothamBold
@@ -302,7 +305,6 @@ sortButton.TextScaled = true
 sortButton.Parent = mainPanel
 
 local sortTextConstraint = Instance.new("UITextSizeConstraint")
-sortTextConstraint.MinTextSize = 9
 sortTextConstraint.MaxTextSize = 14
 sortTextConstraint.Parent = sortButton
 
@@ -311,8 +313,8 @@ createCorner(6).Parent = sortButton
 -- Sort Popup (adaptive)
 local sortPopup = Instance.new("Frame")
 sortPopup.Name = "SortPopup"
-sortPopup.Size = UDim2.new(0.22, 0, 0.16, 0)
-sortPopup.Position = UDim2.new(0.75, 0, 0.24, 0)
+sortPopup.Size = UDim2.new(0.2, 0, 0.15, 0)
+sortPopup.Position = UDim2.new(0.8, 0, 0.225, 0)
 sortPopup.BackgroundColor3 = COLORS.CardBg
 sortPopup.BorderSizePixel = 0
 sortPopup.Visible = false
@@ -353,7 +355,6 @@ for i, option in ipairs(sortOptions) do
 	optBtn.Parent = sortPopup
 	
 	local optTextConstraint = Instance.new("UITextSizeConstraint")
-	optTextConstraint.MinTextSize = 9
 	optTextConstraint.MaxTextSize = 13
 	optTextConstraint.Parent = optBtn
 	
@@ -381,8 +382,8 @@ end)
 
 local contentFrame = Instance.new("ScrollingFrame")
 contentFrame.Name = "ContentFrame"
-contentFrame.Size = UDim2.new(0.94, 0, 0.6, 0) -- 60% of panel height
-contentFrame.Position = UDim2.new(0.03, 0, 0.25, 0)
+contentFrame.Size = UDim2.new(1, 0, 0.62, 0)
+contentFrame.Position = UDim2.new(0, 0, 0.23, 0)
 contentFrame.BackgroundTransparency = 1
 contentFrame.ScrollBarThickness = 6
 contentFrame.ScrollBarImageColor3 = COLORS.Accent
@@ -390,37 +391,45 @@ contentFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 contentFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 contentFrame.Parent = mainPanel
 
+-- Content Padding
+local contentPadding = Instance.new("UIPadding")
+contentPadding.PaddingTop = UDim.new(0.01, 0)
+contentPadding.PaddingBottom = UDim.new(0.02, 0)
+contentPadding.PaddingLeft = UDim.new(0.01, 0)
+contentPadding.PaddingRight = UDim.new(0.01, 0)
+contentPadding.Parent = contentFrame
+
 -- Adaptive Grid
 local columns = isMobile and 3 or 4
 local cellWidth = 1 / columns
 
 local contentGrid = Instance.new("UIGridLayout")
-contentGrid.CellSize = UDim2.new(cellWidth, -8, 0, 130)
-contentGrid.CellPadding = UDim2.new(0.01, 0, 0, 8)
+contentGrid.CellSize = UDim2.new(cellWidth - 0.02, 0, 0, 130)
+contentGrid.CellPadding = UDim2.new(0.015, 0, 0.015, 0)
 contentGrid.SortOrder = Enum.SortOrder.LayoutOrder
 contentGrid.Parent = contentFrame
-
-local contentPadding = Instance.new("UIPadding")
-contentPadding.PaddingTop = UDim.new(0.01, 0)
-contentPadding.PaddingBottom = UDim.new(0.02, 0)
-contentPadding.Parent = contentFrame
 
 -- ==================== STATS BAR (ADAPTIVE) ====================
 
 local statsBar = Instance.new("Frame")
 statsBar.Name = "StatsBar"
-statsBar.Size = UDim2.new(0.94, 0, 0.075, 0)
-statsBar.Position = UDim2.new(0.03, 0, 0.91, 0)
+statsBar.Size = UDim2.new(1, 0, 0.07, 0)
+statsBar.Position = UDim2.new(0, 0, 0.9, 0)
 statsBar.BackgroundColor3 = Color3.fromRGB(20, 35, 55)
 statsBar.BorderSizePixel = 0
 statsBar.Parent = mainPanel
 
 createCorner(10).Parent = statsBar
 
+local statsPadding = Instance.new("UIPadding")
+statsPadding.PaddingLeft = UDim.new(0.03, 0)
+statsPadding.PaddingRight = UDim.new(0.03, 0)
+statsPadding.Parent = statsBar
+
 local totalValueLabel = Instance.new("TextLabel")
 totalValueLabel.Name = "TotalValue"
-totalValueLabel.Size = UDim2.new(0.48, 0, 0.85, 0)
-totalValueLabel.Position = UDim2.new(0.02, 0, 0.075, 0)
+totalValueLabel.Size = UDim2.new(0.48, 0, 0.8, 0)
+totalValueLabel.Position = UDim2.new(0, 0, 0.1, 0)
 totalValueLabel.BackgroundTransparency = 1
 totalValueLabel.Font = Enum.Font.GothamBold
 totalValueLabel.Text = "💰 Total Value: $0"
@@ -430,14 +439,13 @@ totalValueLabel.TextXAlignment = Enum.TextXAlignment.Left
 totalValueLabel.Parent = statsBar
 
 local valueTextConstraint = Instance.new("UITextSizeConstraint")
-valueTextConstraint.MinTextSize = 10
-valueTextConstraint.MaxTextSize = 18
+valueTextConstraint.MaxTextSize = 16
 valueTextConstraint.Parent = totalValueLabel
 
 local discoveredLabel = Instance.new("TextLabel")
 discoveredLabel.Name = "Discovered"
-discoveredLabel.Size = UDim2.new(0.48, 0, 0.85, 0)
-discoveredLabel.Position = UDim2.new(0.5, 0, 0.075, 0)
+discoveredLabel.Size = UDim2.new(0.48, 0, 0.8, 0)
+discoveredLabel.Position = UDim2.new(0.52, 0, 0.1, 0)
 discoveredLabel.BackgroundTransparency = 1
 discoveredLabel.Font = Enum.Font.GothamBold
 discoveredLabel.Text = "📖 Discovered: 0/0"
@@ -447,8 +455,7 @@ discoveredLabel.TextXAlignment = Enum.TextXAlignment.Right
 discoveredLabel.Parent = statsBar
 
 local discTextConstraint = Instance.new("UITextSizeConstraint")
-discTextConstraint.MinTextSize = 10
-discTextConstraint.MaxTextSize = 18
+discTextConstraint.MaxTextSize = 16
 discTextConstraint.Parent = discoveredLabel
 
 -- ==================== HOLD FISH FUNCTION ====================

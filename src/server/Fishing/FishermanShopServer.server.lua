@@ -9,7 +9,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local DataHandler = require(script.Parent.DataHandler)
+local DataHandler = require(script.Parent.Parent.DataHandler)
 local FishConfig = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishConfig"))
 
 -- Create RemoteFolder

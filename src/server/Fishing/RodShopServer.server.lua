@@ -10,7 +10,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
 
-local DataHandler = require(script.Parent.DataHandler)
+local DataHandler = require(script.Parent.Parent.DataHandler)
 local RodShopConfig = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("RodShopConfig"))
 
 -- Create RemoteFolder

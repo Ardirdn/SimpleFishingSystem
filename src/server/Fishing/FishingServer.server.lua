@@ -14,7 +14,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local FishConfig = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishConfig"))
-local DataHandler = require(script.Parent.DataHandler)
+local DataHandler = require(script.Parent.Parent.DataHandler)
 
 local FishingRodsFolder = ReplicatedStorage:WaitForChild("FishingRods")
 local RodsFolder = FishingRodsFolder:WaitForChild("Rods")

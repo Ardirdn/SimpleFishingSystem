@@ -318,7 +318,7 @@ end
 -- Main Equipment Panel
 local equipMainPanel = Instance.new("Frame")
 equipMainPanel.Name = "MainPanel"
-equipMainPanel.Size = UDim2.new(0.45, 0, 0.75, 0)
+equipMainPanel.Size = UDim2.new(0.5, 0, 0.8, 0)
 equipMainPanel.Position = UDim2.new(0.5, 0, 0.5, 0)
 equipMainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
 equipMainPanel.BackgroundColor3 = COLORS.Background
@@ -326,15 +326,11 @@ equipMainPanel.BorderSizePixel = 0
 equipMainPanel.Visible = false
 equipMainPanel.Parent = equipScreenGui
 
+-- AspectRatio based on width
 local panelAspect = Instance.new("UIAspectRatioConstraint")
-panelAspect.AspectRatio = 1.2
-panelAspect.DominantAxis = Enum.DominantAxis.Height
+panelAspect.AspectRatio = 0.85
+panelAspect.DominantAxis = Enum.DominantAxis.Width
 panelAspect.Parent = equipMainPanel
-
-local panelSizeConstraint = Instance.new("UISizeConstraint")
-panelSizeConstraint.MinSize = Vector2.new(320, 350)
-panelSizeConstraint.MaxSize = Vector2.new(600, 650)
-panelSizeConstraint.Parent = equipMainPanel
 
 createCorner(16).Parent = equipMainPanel
 
@@ -343,20 +339,28 @@ mainStroke.Color = COLORS.Accent
 mainStroke.Thickness = 2
 mainStroke.Parent = equipMainPanel
 
+-- Main Panel Padding
+local mainPadding = Instance.new("UIPadding")
+mainPadding.PaddingTop = UDim.new(0.02, 0)
+mainPadding.PaddingBottom = UDim.new(0.02, 0)
+mainPadding.PaddingLeft = UDim.new(0.03, 0)
+mainPadding.PaddingRight = UDim.new(0.03, 0)
+mainPadding.Parent = equipMainPanel
+
 -- Header
 local equipHeaderFrame = Instance.new("Frame")
 equipHeaderFrame.Name = "Header"
-equipHeaderFrame.Size = UDim2.new(1, 0, 0.09, 0)
+equipHeaderFrame.Size = UDim2.new(1, 0, 0.08, 0)
 equipHeaderFrame.Position = UDim2.new(0, 0, 0, 0)
 equipHeaderFrame.BackgroundColor3 = Color3.fromRGB(20, 35, 55)
 equipHeaderFrame.BorderSizePixel = 0
 equipHeaderFrame.Parent = equipMainPanel
 
-createCorner(16).Parent = equipHeaderFrame
+createCorner(12).Parent = equipHeaderFrame
 
 local equipTitleLabel = Instance.new("TextLabel")
-equipTitleLabel.Size = UDim2.new(0.7, 0, 0.8, 0)
-equipTitleLabel.Position = UDim2.new(0.03, 0, 0.1, 0)
+equipTitleLabel.Size = UDim2.new(0.75, 0, 0.7, 0)
+equipTitleLabel.Position = UDim2.new(0.03, 0, 0.15, 0)
 equipTitleLabel.BackgroundTransparency = 1
 equipTitleLabel.Font = Enum.Font.GothamBlack
 equipTitleLabel.Text = "🎣 EQUIPMENT"
@@ -365,9 +369,13 @@ equipTitleLabel.TextScaled = true
 equipTitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 equipTitleLabel.Parent = equipHeaderFrame
 
+local titleConstraint = Instance.new("UITextSizeConstraint")
+titleConstraint.MaxTextSize = 28
+titleConstraint.Parent = equipTitleLabel
+
 local equipCloseButton = Instance.new("TextButton")
-equipCloseButton.Size = UDim2.new(0.12, 0, 0.7, 0)
-equipCloseButton.Position = UDim2.new(0.86, 0, 0.15, 0)
+equipCloseButton.Size = UDim2.new(0.08, 0, 0.7, 0)
+equipCloseButton.Position = UDim2.new(0.9, 0, 0.15, 0)
 equipCloseButton.BackgroundColor3 = COLORS.Danger
 equipCloseButton.BorderSizePixel = 0
 equipCloseButton.Font = Enum.Font.GothamBold
@@ -375,6 +383,10 @@ equipCloseButton.Text = "X"
 equipCloseButton.TextColor3 = COLORS.Text
 equipCloseButton.TextScaled = true
 equipCloseButton.Parent = equipHeaderFrame
+
+local closeTextConstraint = Instance.new("UITextSizeConstraint")
+closeTextConstraint.MaxTextSize = 18
+closeTextConstraint.Parent = equipCloseButton
 
 local closeAspect = Instance.new("UIAspectRatioConstraint")
 closeAspect.AspectRatio = 1
@@ -385,8 +397,8 @@ createCorner(8).Parent = equipCloseButton
 -- Tab Buttons
 local equipTabFrame = Instance.new("Frame")
 equipTabFrame.Name = "TabFrame"
-equipTabFrame.Size = UDim2.new(0.94, 0, 0.065, 0)
-equipTabFrame.Position = UDim2.new(0.03, 0, 0.105, 0)
+equipTabFrame.Size = UDim2.new(1, 0, 0.06, 0)
+equipTabFrame.Position = UDim2.new(0, 0, 0.1, 0)
 equipTabFrame.BackgroundTransparency = 1
 equipTabFrame.Parent = equipMainPanel
 
@@ -406,6 +418,10 @@ rodsTabBtn.TextColor3 = COLORS.Text
 rodsTabBtn.TextScaled = true
 rodsTabBtn.Parent = equipTabFrame
 
+local rodTabTextConstraint = Instance.new("UITextSizeConstraint")
+rodTabTextConstraint.MaxTextSize = 16
+rodTabTextConstraint.Parent = rodsTabBtn
+
 createCorner(8).Parent = rodsTabBtn
 
 local floatersTabBtn = Instance.new("TextButton")
@@ -419,13 +435,17 @@ floatersTabBtn.TextColor3 = COLORS.SubText
 floatersTabBtn.TextScaled = true
 floatersTabBtn.Parent = equipTabFrame
 
+local floaterTabTextConstraint = Instance.new("UITextSizeConstraint")
+floaterTabTextConstraint.MaxTextSize = 16
+floaterTabTextConstraint.Parent = floatersTabBtn
+
 createCorner(8).Parent = floatersTabBtn
 
 -- Content Frame
 local equipContentFrame = Instance.new("ScrollingFrame")
 equipContentFrame.Name = "ContentFrame"
-equipContentFrame.Size = UDim2.new(0.94, 0, 0.65, 0)
-equipContentFrame.Position = UDim2.new(0.03, 0, 0.19, 0)
+equipContentFrame.Size = UDim2.new(1, 0, 0.68, 0)
+equipContentFrame.Position = UDim2.new(0, 0, 0.18, 0)
 equipContentFrame.BackgroundTransparency = 1
 equipContentFrame.ScrollBarThickness = 6
 equipContentFrame.ScrollBarImageColor3 = COLORS.Accent
@@ -433,30 +453,42 @@ equipContentFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 equipContentFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 equipContentFrame.Parent = equipMainPanel
 
+local contentPadding = Instance.new("UIPadding")
+contentPadding.PaddingTop = UDim.new(0.01, 0)
+contentPadding.PaddingBottom = UDim.new(0.01, 0)
+contentPadding.PaddingLeft = UDim.new(0.01, 0)
+contentPadding.PaddingRight = UDim.new(0.01, 0)
+contentPadding.Parent = equipContentFrame
+
 local columns = isMobile and 3 or 4
 local cellWidth = 1 / columns
 
 local contentGrid = Instance.new("UIGridLayout")
-contentGrid.CellSize = UDim2.new(cellWidth, -8, 0, 130)
-contentGrid.CellPadding = UDim2.new(0.01, 0, 0, 8)
+contentGrid.CellSize = UDim2.new(cellWidth - 0.02, 0, 0, 130)
+contentGrid.CellPadding = UDim2.new(0.015, 0, 0.015, 0)
 contentGrid.SortOrder = Enum.SortOrder.LayoutOrder
 contentGrid.Parent = equipContentFrame
 
 -- Stats Bar
 local equipStatsBar = Instance.new("Frame")
 equipStatsBar.Name = "StatsBar"
-equipStatsBar.Size = UDim2.new(0.94, 0, 0.075, 0)
-equipStatsBar.Position = UDim2.new(0.03, 0, 0.91, 0)
+equipStatsBar.Size = UDim2.new(1, 0, 0.08, 0)
+equipStatsBar.Position = UDim2.new(0, 0, 0.9, 0)
 equipStatsBar.BackgroundColor3 = Color3.fromRGB(20, 35, 55)
 equipStatsBar.BorderSizePixel = 0
 equipStatsBar.Parent = equipMainPanel
 
 createCorner(10).Parent = equipStatsBar
 
+local statsPadding = Instance.new("UIPadding")
+statsPadding.PaddingLeft = UDim.new(0.03, 0)
+statsPadding.PaddingRight = UDim.new(0.03, 0)
+statsPadding.Parent = equipStatsBar
+
 local equippedLabel = Instance.new("TextLabel")
 equippedLabel.Name = "EquippedInfo"
-equippedLabel.Size = UDim2.new(0.94, 0, 0.85, 0)
-equippedLabel.Position = UDim2.new(0.03, 0, 0.075, 0)
+equippedLabel.Size = UDim2.new(1, 0, 0.8, 0)
+equippedLabel.Position = UDim2.new(0, 0, 0.1, 0)
 equippedLabel.BackgroundTransparency = 1
 equippedLabel.Font = Enum.Font.GothamBold
 equippedLabel.Text = "🎣 Equipped: Loading..."
@@ -464,6 +496,10 @@ equippedLabel.TextColor3 = COLORS.Success
 equippedLabel.TextScaled = true
 equippedLabel.TextXAlignment = Enum.TextXAlignment.Left
 equippedLabel.Parent = equipStatsBar
+
+local equippedTextConstraint = Instance.new("UITextSizeConstraint")
+equippedTextConstraint.MaxTextSize = 16
+equippedTextConstraint.Parent = equippedLabel
 
 -- ==================== EQUIPMENT ITEM CARD ====================
 
