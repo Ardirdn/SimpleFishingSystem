@@ -63,20 +63,25 @@ local function getFloaterData(floaterId)
 	return RodShopConfig.GetFloaterById(floaterId)
 end
 
+-- Create RemoteEvent for notifications
+local nativeNotifEvent = remoteFolder:FindFirstChild("NativeNotification")
+if not nativeNotifEvent then
+	nativeNotifEvent = Instance.new("RemoteEvent")
+	nativeNotifEvent.Name = "NativeNotification"
+	nativeNotifEvent.Parent = remoteFolder
+end
+
 local function sendNotification(player, message, notifType, icon)
-	-- Gunakan sistem notifikasi yang sudah ada jika tersedia
-	local NotificationServer = script.Parent:FindFirstChild("NotificationServer")
-	if NotificationServer then
-		local NotificationService = require(NotificationServer)
-		NotificationService:Send(player, {
-			Message = message,
-			Type = notifType or "info",
-			Duration = 3,
-			Icon = icon
+	-- Gunakan notifikasi bawaan Roblox
+	pcall(function()
+		nativeNotifEvent:FireClient(player, {
+			Title = "Rod Shop",
+			Text = message,
+			Icon = icon or "rbxassetid://6031075938", -- Default fishing icon
+			Duration = 3
 		})
-	else
-		print(string.format("[ROD SHOP] %s: %s", player.Name, message))
-	end
+	end)
+	print(string.format("[ROD SHOP] %s: %s", player.Name, message))
 end
 
 -- ==================== GET SHOP DATA ====================

@@ -47,19 +47,25 @@ print("✅ [FISHERMAN SHOP SERVER] Initialized")
 
 -- ==================== HELPER FUNCTIONS ====================
 
+-- Create RemoteEvent for notifications
+local nativeNotifEvent = remoteFolder:FindFirstChild("NativeNotification")
+if not nativeNotifEvent then
+	nativeNotifEvent = Instance.new("RemoteEvent")
+	nativeNotifEvent.Name = "NativeNotification"
+	nativeNotifEvent.Parent = remoteFolder
+end
+
 local function sendNotification(player, message, notifType, icon)
-	local NotificationServer = script.Parent:FindFirstChild("NotificationServer")
-	if NotificationServer then
-		local NotificationService = require(NotificationServer)
-		NotificationService:Send(player, {
-			Message = message,
-			Type = notifType or "info",
-			Duration = 3,
-			Icon = icon
+	-- Gunakan notifikasi bawaan Roblox
+	pcall(function()
+		nativeNotifEvent:FireClient(player, {
+			Title = "Fisherman Shop",
+			Text = message,
+			Icon = icon or "rbxassetid://6031075938", -- Default fish icon
+			Duration = 3
 		})
-	else
-		print(string.format("[FISHERMAN SHOP] %s: %s", player.Name, message))
-	end
+	end)
+	print(string.format("[FISHERMAN SHOP] %s: %s", player.Name, message))
 end
 
 local function calculateFishValue(fishId, count)
