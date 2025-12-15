@@ -1,7 +1,7 @@
 --[[
-	LineRenderer Module
-	Advanced fishing line physics and rendering
-	Optimized rope simulation with wind dynamics
+	LineRenderer Module (Simplified)
+	Basic fishing line rendering with sin wave curve
+	No wind effects, no water detection
 ]]
 
 local RunService = game:GetService("RunService")
@@ -19,29 +19,6 @@ end
 
 function LineRenderer.IsActive()
 	return _state._ready and _state._f > 0.5
-end
-
--- Wind animation presets
-local WindPresets = {
-	GENTLE = { SwayStrength = 0.15, WindSpeed1 = 0.8, WindSpeed2 = 0.5, WaveCount = 2, Description = "Angin sepoi-sepoi" },
-	MEDIUM = { SwayStrength = 0.3, WindSpeed1 = 1.2, WindSpeed2 = 0.8, WaveCount = 2, Description = "Angin normal" },
-	STRONG = { SwayStrength = 0.8, WindSpeed1 = 2.0, WindSpeed2 = 1.5, WaveCount = 3, Description = "Angin kencang" },
-	VERY_STRONG = { SwayStrength = 1.2, WindSpeed1 = 2.5, WindSpeed2 = 1.8, WaveCount = 3, Description = "Angin sangat kencang" },
-	EXTREME = { SwayStrength = 2.0, WindSpeed1 = 4.0, WindSpeed2 = 3.2, WaveCount = 4, Description = "Badai/topan" },
-	CUSTOM = { SwayStrength = 5, WindSpeed1 = 8, WindSpeed2 = 6.4, WaveCount = 8, Description = "Custom" }
-}
-
-local CurrentWindPreset = "EXTREME"
-
-function LineRenderer.GetWindSettings()
-	local preset = WindPresets[CurrentWindPreset] or WindPresets.MEDIUM
-	return preset
-end
-
-function LineRenderer.SetWindPreset(presetName)
-	if WindPresets[presetName] then
-		CurrentWindPreset = presetName
-	end
 end
 
 -- Create beam segment with line style
@@ -135,7 +112,7 @@ function LineRenderer.CreateFishingLine(edgePart, floaterPart, lineStyle, numMid
 	}
 end
 
--- Create complete fishing line WITH physics already running - returns all data + connection
+-- Create complete fishing line WITH basic sin wave physics - returns all data + connection
 function LineRenderer.CreateCompleteFishingLineWithPhysics(edgePart, floaterPart, lineStyle, numMiddlePoints, character, currentFloater)
 	if not LineRenderer.IsActive() then return nil end
 	
@@ -191,111 +168,56 @@ function LineRenderer.CreateCompleteFishingLineWithPhysics(edgePart, floaterPart
 		end
 	end
 	
-	-- Start physics simulation
-	local windConfig = LineRenderer.GetWindSettings()
-	local windTime = 0
-	local surfaceCache = {}
-	local frameCount = 0
+	-- Start basic sin wave physics simulation
+	local waveTime = 0
+	local waveSpeed = 1.5  -- Speed of the wave
+	local waveAmplitude = 0.3  -- Amplitude of the sin wave
 	
 	local physicsConnection = RunService.Heartbeat:Connect(function(dt)
 		if not attachment0 or not attachment0.Parent then return end
 		if not attachment1 or not attachment1.Parent then return end
 		if #middlePoints == 0 then return end
 		
-		windTime = windTime + dt
-		frameCount = frameCount + 1
+		waveTime = waveTime + dt
 		
 		local startPos = attachment0.WorldPosition
 		local endPos = attachment1.WorldPosition
 		local totalDist = (endPos - startPos).Magnitude
-		local sag = math.clamp(totalDist * 0.25, 3, 18)
 		
-		-- Calculate rope direction and perpendicular wind direction
+		-- Sag based on distance (catenary curve)
+		local sag = math.clamp(totalDist * 0.15, 1, 8)
+		
+		-- Calculate rope direction
 		local ropeDir = (endPos - startPos).Unit
 		local worldUp = Vector3.new(0, 1, 0)
-		local windDir = ropeDir:Cross(worldUp)
+		local perpDir = ropeDir:Cross(worldUp)
 		
-		if windDir.Magnitude > 0.01 then
-			windDir = windDir.Unit
+		if perpDir.Magnitude > 0.01 then
+			perpDir = perpDir.Unit
 		else
-			windDir = Vector3.new(1, 0, 0)
+			perpDir = Vector3.new(1, 0, 0)
 		end
 		
-		-- Update surface cache every 10 frames for performance
-		local shouldUpdateSurface = (frameCount % 10 == 0)
-		
-		if shouldUpdateSurface then
-			local rayParams = RaycastParams.new()
-			rayParams.FilterDescendantsInstances = {character, currentFloater}
-			rayParams.FilterType = Enum.RaycastFilterType.Exclude
-			
-			for i, point in ipairs(middlePoints) do
-				if point and point.Parent then
-					local alpha = i / (numMiddlePoints + 1)
-					local midX = startPos.X + (endPos.X - startPos.X) * alpha
-					local midZ = startPos.Z + (endPos.Z - startPos.Z) * alpha
-					
-					local rayOrigin = Vector3.new(midX, 200, midZ)
-					local rayDirection = Vector3.new(0, -300, 0)
-					local rayResult = workspace:Raycast(rayOrigin, rayDirection, rayParams)
-					
-					if rayResult then
-						surfaceCache[i] = rayResult.Position.Y
-					else
-						surfaceCache[i] = nil
-					end
-				end
-			end
-		end
-		
-		-- Update each middle point position with wind physics
+		-- Update each middle point position with sin wave curve
 		for i, point in ipairs(middlePoints) do
 			if point and point.Parent then
 				local alpha = i / (numMiddlePoints + 1)
 				
+				-- Base position (linear interpolation)
 				local midX = startPos.X + (endPos.X - startPos.X) * alpha
 				local midZ = startPos.Z + (endPos.Z - startPos.Z) * alpha
 				local baseY = startPos.Y + (endPos.Y - startPos.Y) * alpha
+				
+				-- Parabola sag (catenary-like curve)
 				local parabolaFactor = -4 * (alpha - 0.5) * (alpha - 0.5) + 1
 				local yOffset = sag * parabolaFactor
 				
-				-- Wind animation - horizontal sway
-				local swayStrength = math.sin(alpha * math.pi) * windConfig.SwayStrength
-				local combinedWave = 0
-				
-				if windConfig.WaveCount >= 1 then
-					combinedWave = combinedWave + math.sin(windTime * windConfig.WindSpeed1 + alpha * 3)
-				end
-				if windConfig.WaveCount >= 2 then
-					combinedWave = combinedWave + math.sin(windTime * windConfig.WindSpeed2 + alpha * 5) * 0.6
-				end
-				if windConfig.WaveCount >= 3 then
-					combinedWave = combinedWave + math.sin(windTime * 2.5 + alpha * 7) * 0.4
-				end
-				if windConfig.WaveCount >= 4 then
-					combinedWave = combinedWave + math.sin(windTime * 5.0 + alpha * 9) * 0.3
-				end
-				
-				combinedWave = combinedWave * swayStrength
-				
-				-- Wind offset only horizontal
-				local windOffset = windDir * combinedWave
-				
-				-- Subtle downward wave for realism
-				local downwardWave = math.abs(math.sin(windTime * 0.8 + alpha * 2)) * 0.15
+				-- Subtle sin wave for natural look (animated)
+				local sinWave = math.sin(waveTime * waveSpeed + alpha * math.pi * 2) * waveAmplitude
+				local waveOffset = perpDir * sinWave * parabolaFactor  -- Wave strongest at middle
 				
 				local basePos = Vector3.new(midX, baseY - yOffset, midZ)
-				local calculatedPos = basePos + windOffset - Vector3.new(0, downwardWave, 0)
-				
-				-- Soft clamp - line can penetrate surface slightly
-				if surfaceCache[i] then
-					local minY = surfaceCache[i] - 0.05
-					calculatedPos = Vector3.new(
-						calculatedPos.X,
-						math.max(calculatedPos.Y, minY),
-						calculatedPos.Z
-					)
-				end
+				local calculatedPos = basePos + waveOffset
 				
 				point.Position = calculatedPos
 			end
@@ -314,67 +236,35 @@ function LineRenderer.CreateCompleteFishingLineWithPhysics(edgePart, floaterPart
 	}
 end
 
-
--- Start rope physics update loop
+-- Start rope physics with sin wave (for external calls)
 function LineRenderer.StartRopePhysics(lineData, character, currentFloater, onUpdate)
 	if not LineRenderer.IsActive() or not lineData then return nil end
 	
-	local windConfig = LineRenderer.GetWindSettings()
-	local windTime = 0
-	local surfaceCache = {}
-	local frameCount = 0
+	local waveTime = 0
+	local waveSpeed = 1.5
+	local waveAmplitude = 0.3
 	
 	local connection = RunService.Heartbeat:Connect(function(dt)
 		if not lineData.attachment0 or not lineData.attachment1 then return end
 		if #lineData.middlePoints == 0 then return end
 		
-		windTime = windTime + dt
-		frameCount = frameCount + 1
+		waveTime = waveTime + dt
 		
 		local startPos = lineData.attachment0.WorldPosition
 		local endPos = lineData.attachment1.WorldPosition
 		local totalDist = (endPos - startPos).Magnitude
-		local sag = math.clamp(totalDist * 0.25, 3, 18)
+		local sag = math.clamp(totalDist * 0.15, 1, 8)
 		
-		-- Calculate rope direction and perpendicular wind direction
 		local ropeDir = (endPos - startPos).Unit
 		local worldUp = Vector3.new(0, 1, 0)
-		local windDir = ropeDir:Cross(worldUp)
+		local perpDir = ropeDir:Cross(worldUp)
 		
-		if windDir.Magnitude > 0.01 then
-			windDir = windDir.Unit
+		if perpDir.Magnitude > 0.01 then
+			perpDir = perpDir.Unit
 		else
-			windDir = Vector3.new(1, 0, 0)
+			perpDir = Vector3.new(1, 0, 0)
 		end
 		
-		-- Update surface cache every 10 frames for performance
-		local shouldUpdateSurface = (frameCount % 10 == 0)
-		
-		if shouldUpdateSurface then
-			local rayParams = RaycastParams.new()
-			rayParams.FilterDescendantsInstances = {character, currentFloater}
-			rayParams.FilterType = Enum.RaycastFilterType.Exclude
-			
-			for i, point in ipairs(lineData.middlePoints) do
-				if point and point.Parent then
-					local alpha = i / (#lineData.middlePoints + 1)
-					local midX = startPos.X + (endPos.X - startPos.X) * alpha
-					local midZ = startPos.Z + (endPos.Z - startPos.Z) * alpha
-					
-					local rayOrigin = Vector3.new(midX, 200, midZ)
-					local rayDirection = Vector3.new(0, -300, 0)
-					local rayResult = workspace:Raycast(rayOrigin, rayDirection, rayParams)
-					
-					if rayResult then
-						surfaceCache[i] = rayResult.Position.Y
-					else
-						surfaceCache[i] = nil
-					end
-				end
-			end
-		end
-		
-		-- Update each middle point position with wind physics
 		for i, point in ipairs(lineData.middlePoints) do
 			if point and point.Parent then
 				local alpha = i / (#lineData.middlePoints + 1)
@@ -385,79 +275,39 @@ function LineRenderer.StartRopePhysics(lineData, character, currentFloater, onUp
 				local parabolaFactor = -4 * (alpha - 0.5) * (alpha - 0.5) + 1
 				local yOffset = sag * parabolaFactor
 				
-				-- Wind animation - horizontal sway
-				local swayStrength = math.sin(alpha * math.pi) * windConfig.SwayStrength
-				local combinedWave = 0
-				
-				if windConfig.WaveCount >= 1 then
-					combinedWave = combinedWave + math.sin(windTime * windConfig.WindSpeed1 + alpha * 3)
-				end
-				if windConfig.WaveCount >= 2 then
-					combinedWave = combinedWave + math.sin(windTime * windConfig.WindSpeed2 + alpha * 5) * 0.6
-				end
-				if windConfig.WaveCount >= 3 then
-					combinedWave = combinedWave + math.sin(windTime * 2.5 + alpha * 7) * 0.4
-				end
-				if windConfig.WaveCount >= 4 then
-					combinedWave = combinedWave + math.sin(windTime * 5.0 + alpha * 9) * 0.3
-				end
-				
-				combinedWave = combinedWave * swayStrength
-				
-				-- Wind offset only horizontal
-				local windOffset = windDir * combinedWave
-				
-				-- Subtle downward wave for realism
-				local downwardWave = math.abs(math.sin(windTime * 0.8 + alpha * 2)) * 0.15
+				local sinWave = math.sin(waveTime * waveSpeed + alpha * math.pi * 2) * waveAmplitude
+				local waveOffset = perpDir * sinWave * parabolaFactor
 				
 				local basePos = Vector3.new(midX, baseY - yOffset, midZ)
-				local calculatedPos = basePos + windOffset - Vector3.new(0, downwardWave, 0)
-				
-				-- Soft clamp - line can penetrate surface slightly
-				if surfaceCache[i] then
-					local minY = surfaceCache[i] - 0.05
-					calculatedPos = Vector3.new(
-						calculatedPos.X,
-						math.max(calculatedPos.Y, minY),
-						calculatedPos.Z
-					)
-				end
+				local calculatedPos = basePos + waveOffset
 				
 				point.Position = calculatedPos
 			end
 		end
 		
 		if onUpdate then
-			onUpdate(windTime, surfaceCache)
+			onUpdate(waveTime, nil)
 		end
 	end)
 	
 	return connection
 end
 
--- Start rope physics during pulling (tighter line, less sag)
+-- Start rope physics during pulling (STRAIGHT LINE - no curve, no wave)
 function LineRenderer.StartPullingRopePhysics(lineData, tensionLevel)
 	if not LineRenderer.IsActive() or not lineData then return nil end
-	
-	local windConfig = LineRenderer.GetWindSettings()
-	local windTime = 0
 	
 	local connection = RunService.Heartbeat:Connect(function(dt)
 		if not lineData.attachment0 or not lineData.attachment1 then return end
 		if #lineData.middlePoints == 0 then return end
 		
-		windTime = windTime + dt
-		
 		local startPos = lineData.attachment0.WorldPosition
 		local endPos = lineData.attachment1.WorldPosition
+		
+		-- During pulling: straight line with minimal sag based on tension
 		local totalDist = (endPos - startPos).Magnitude
-		
-		local baseSag = math.clamp(totalDist * 0.25, 3, 18)
-		local currentSag = baseSag * (1 - (tensionLevel or 0.7))
-		
-		local ropeDir = (endPos - startPos).Unit
-		local windDir = ropeDir:Cross(Vector3.new(0, 1, 0))
-		if windDir.Magnitude > 0.01 then windDir = windDir.Unit else windDir = Vector3.new(1, 0, 0) end
+		local baseSag = math.clamp(totalDist * 0.15, 1, 8)
+		local currentSag = baseSag * (1 - (tensionLevel or 0.8))  -- High tension = less sag
 		
 		for i, point in ipairs(lineData.middlePoints) do
 			if point and point.Parent then
@@ -465,20 +315,13 @@ function LineRenderer.StartPullingRopePhysics(lineData, tensionLevel)
 				local midX = startPos.X + (endPos.X - startPos.X) * alpha
 				local midZ = startPos.Z + (endPos.Z - startPos.Z) * alpha
 				local baseY = startPos.Y + (endPos.Y - startPos.Y) * alpha
+				
+				-- Minimal parabola sag during tension (almost straight)
 				local parabolaFactor = -4 * (alpha - 0.5) * (alpha - 0.5) + 1
 				local yOffset = currentSag * parabolaFactor
 				
-				-- Reduced wind during tension
-				local windStrength = windConfig.SwayStrength * (1 - (tensionLevel or 0.7) * 0.7)
-				local swayStrength = math.sin(alpha * math.pi) * windStrength
-				local combinedWave = 0
-				if windConfig.WaveCount >= 1 then combinedWave = combinedWave + math.sin(windTime * windConfig.WindSpeed1 + alpha * 3) end
-				if windConfig.WaveCount >= 2 then combinedWave = combinedWave + math.sin(windTime * windConfig.WindSpeed2 + alpha * 5) * 0.6 end
-				combinedWave = combinedWave * swayStrength
-				local windOffset = windDir * combinedWave
-				
-				local basePos = Vector3.new(midX, baseY - yOffset, midZ)
-				local calculatedPos = basePos + windOffset
+				-- No wave during pulling - straight line
+				local calculatedPos = Vector3.new(midX, baseY - yOffset, midZ)
 				
 				point.Position = calculatedPos
 			end

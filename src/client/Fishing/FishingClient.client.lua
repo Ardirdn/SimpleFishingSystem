@@ -82,11 +82,11 @@ local SoundConfig = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChi
 local FishingRodsFolder = ReplicatedStorage:WaitForChild("FishingRods")
 local FloatersFolder = FishingRodsFolder:WaitForChild("Floaters")
 
--- Module Loader for optimized systems
+-- Module Loader for optimized systems (simplified - no water detection)
 local ModuleLoader = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ClientModuleLoader"))
 local LineRenderer = ModuleLoader.GetLineRenderer()
 local AnimController = ModuleLoader.GetAnimationController()
-local WaterDetect = ModuleLoader.GetWaterDetection()
+-- WaterDetection removed - fishing allowed anywhere
 
 -- Sound state tracking
 local currentPullingSound = nil
@@ -431,27 +431,19 @@ local startPulling
 
 
 -- ========================================
--- WIND ANIMATION CONFIG (Delegated to Module)
+-- LINE PHYSICS (SIMPLIFIED - NO WIND)
 -- ========================================
-local function getWindSettings()
-	if LineRenderer and LineRenderer.GetWindSettings then
-		return LineRenderer.GetWindSettings()
-	end
-	-- Fallback default
-	return { SwayStrength = 0.3, WindSpeed1 = 1.2, WindSpeed2 = 0.8, WaveCount = 2 }
-end
+-- Wind effects removed - line uses basic sin wave from LineRenderer module
 
 
 -- ========================================
 -- HELPER FUNCTIONS (Using Optimized Modules)
 -- ========================================
 
--- Water Detection: Delegates to optimized module
+-- Water Detection: DISABLED - Always return true (floater can catch fish anywhere)
 local function isPositionInWater(position)
-	if WaterDetect and WaterDetect.IsPositionInWater then
-		return WaterDetect.IsPositionInWater(position)
-	end
-	return false
+	-- ✅ DISABLED: Skip water detection, always allow fishing
+	return true
 end
 
 
@@ -988,26 +980,19 @@ local function startPulling()
 		beamUpdateConnection:Disconnect()
 	end
 
-	local windConfig = getWindSettings()
-	local windTime = 0
-
+	-- Simplified pulling line physics - straight line with tension
 	beamUpdateConnection = RunService.Heartbeat:Connect(function(dt)
 		if not edgePart or not currentFloater or not isPulling then return end
 		if #middlePoints == 0 then return end
 		if not beamAttachment0 or not beamAttachment1 then return end
 
-		windTime = windTime + dt
-
 		local startPos = beamAttachment0.WorldPosition
 		local endPos = beamAttachment1.WorldPosition
 		local totalDist = (endPos - startPos).Magnitude
 
-		local baseSag = math.clamp(totalDist * 0.25, 3, 18)
-		local currentSag = baseSag * (1 - currentTensionLevel)
-
-		local ropeDir = (endPos - startPos).Unit
-		local windDir = ropeDir:Cross(Vector3.new(0, 1, 0))
-		if windDir.Magnitude > 0.01 then windDir = windDir.Unit else windDir = Vector3.new(1, 0, 0) end
+		-- High tension during pulling = nearly straight line
+		local baseSag = math.clamp(totalDist * 0.1, 0.5, 3)
+		local currentSag = baseSag * (1 - currentTensionLevel * 0.9)  -- Almost straight
 
 		for i, point in ipairs(middlePoints) do
 			if point and point.Parent then
@@ -1018,15 +1003,8 @@ local function startPulling()
 				local parabolaFactor = -4 * (alpha - 0.5) * (alpha - 0.5) + 1
 				local yOffset = currentSag * parabolaFactor
 
-				local windStrength = windConfig.SwayStrength * (1 - currentTensionLevel * 0.7)
-				local swayStrength = math.sin(alpha * math.pi) * windStrength
-				local combinedWave = 0
-				if windConfig.WaveCount >= 1 then combinedWave = combinedWave + math.sin(windTime * windConfig.WindSpeed1 + alpha * 3) end
-				if windConfig.WaveCount >= 2 then combinedWave = combinedWave + math.sin(windTime * windConfig.WindSpeed2 + alpha * 5) * 0.6 end
-				combinedWave = combinedWave * swayStrength
-				local windOffset = windDir * combinedWave
-				local basePos = Vector3.new(midX, baseY - yOffset, midZ)
-				local calculatedPos = basePos + windOffset
+				-- No wind/wave during pulling - straight line
+				local calculatedPos = Vector3.new(midX, baseY - yOffset, midZ)
 				point.Position = calculatedPos
 			end
 		end
