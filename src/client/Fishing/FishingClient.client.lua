@@ -2492,3 +2492,673 @@ else
 end
 
 print("🎣 Fishing System Handler Loaded!")
+
+-- ================================================================================
+--                     SECTION: CAMERA CINEMATIC (PHOTO MODE)
+-- ================================================================================
+--[[
+    Allows players to take cinematic screenshots by hiding UI
+    - Hide all UI elements
+    - Press P or click Photo button to toggle
+]]
+
+-- Define playerGui for this section
+local playerGui = Player.PlayerGui
+
+local isCinematicMode = false
+local hiddenGuis = {}
+local originalCoreGuiState = {}
+
+-- Create Cinematic GUI
+local cinematicGui = Instance.new("ScreenGui")
+cinematicGui.Name = "CameraCinematicGUI"
+cinematicGui.ResetOnSpawn = false
+cinematicGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+cinematicGui.DisplayOrder = 100
+cinematicGui.Parent = playerGui
+
+-- Try to use HUD template for Photo button
+local hudGuiCinematic = playerGui:FindFirstChild("HUD")
+local rightFrame = hudGuiCinematic and hudGuiCinematic:FindFirstChild("Right")
+local cinematicButtonTemplate = rightFrame and rightFrame:FindFirstChild("ButtonTemplate")
+
+local cinematicButton = nil
+local cinematicButtonText = nil
+
+if cinematicButtonTemplate then
+	local buttonContainer = cinematicButtonTemplate:Clone()
+	buttonContainer.Name = "PhotoButton"
+	buttonContainer.Visible = true
+	buttonContainer.LayoutOrder = 3
+	buttonContainer.BackgroundTransparency = 1
+	buttonContainer.Parent = rightFrame
+	
+	cinematicButton = buttonContainer:FindFirstChild("ImageButton")
+	cinematicButtonText = buttonContainer:FindFirstChild("TextLabel")
+	
+	if cinematicButton then
+		cinematicButton.Image = "rbxassetid://139242732181104"
+		cinematicButton.BackgroundTransparency = 1
+	end
+	
+	if cinematicButtonText then
+		cinematicButtonText.Text = "Photo"
+	end
+end
+
+-- Mode Indicator
+local cinematicModeIndicator = Instance.new("TextLabel")
+cinematicModeIndicator.Name = "ModeIndicator"
+cinematicModeIndicator.Size = UDim2.new(0.3, 0, 0.05, 0)
+cinematicModeIndicator.Position = UDim2.new(0.5, 0, 0.02, 0)
+cinematicModeIndicator.AnchorPoint = Vector2.new(0.5, 0)
+cinematicModeIndicator.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+cinematicModeIndicator.BackgroundTransparency = 0.5
+cinematicModeIndicator.Font = Enum.Font.GothamBold
+cinematicModeIndicator.Text = "📷 PHOTO MODE - Click button again to exit"
+cinematicModeIndicator.TextColor3 = Color3.fromRGB(255, 255, 255)
+cinematicModeIndicator.TextScaled = true
+cinematicModeIndicator.Visible = false
+cinematicModeIndicator.Parent = cinematicGui
+
+local indicatorCorner = Instance.new("UICorner")
+indicatorCorner.CornerRadius = UDim.new(0, 8)
+indicatorCorner.Parent = cinematicModeIndicator
+
+-- CoreGui types to hide in photo mode
+local cinematicCoreGuiTypes = {
+	Enum.CoreGuiType.PlayerList,
+	Enum.CoreGuiType.Health,
+	Enum.CoreGuiType.Backpack,
+	Enum.CoreGuiType.Chat,
+	Enum.CoreGuiType.EmotesMenu,
+}
+
+local StarterGui = game:GetService("StarterGui")
+
+local function hideAllUIForPhoto()
+	hiddenGuis = {}
+	
+	for _, gui in ipairs(playerGui:GetChildren()) do
+		if gui:IsA("ScreenGui") and gui ~= cinematicGui then
+			if gui.Enabled then
+				table.insert(hiddenGuis, gui)
+				gui.Enabled = false
+			end
+		end
+	end
+	
+	originalCoreGuiState = {}
+	for _, coreType in ipairs(cinematicCoreGuiTypes) do
+		local success, enabled = pcall(function()
+			return StarterGui:GetCoreGuiEnabled(coreType)
+		end)
+		if success then
+			originalCoreGuiState[coreType] = enabled
+			if enabled then
+				pcall(function()
+					StarterGui:SetCoreGuiEnabled(coreType, false)
+				end)
+			end
+		end
+	end
+end
+
+local function showAllUIAfterPhoto()
+	for _, gui in ipairs(hiddenGuis) do
+		if gui and gui.Parent then
+			gui.Enabled = true
+		end
+	end
+	hiddenGuis = {}
+	
+	for coreType, wasEnabled in pairs(originalCoreGuiState) do
+		if wasEnabled then
+			pcall(function()
+				StarterGui:SetCoreGuiEnabled(coreType, true)
+			end)
+		end
+	end
+	originalCoreGuiState = {}
+end
+
+local function toggleCinematicMode()
+	isCinematicMode = not isCinematicMode
+	
+	if isCinematicMode then
+		hideAllUIForPhoto()
+		cinematicModeIndicator.Visible = true
+		if cinematicButton then
+			cinematicButton.ImageColor3 = Color3.fromRGB(100, 255, 100)
+		end
+		if cinematicButtonText then
+			cinematicButtonText.TextColor3 = Color3.fromRGB(100, 255, 100)
+		end
+		
+		task.delay(3, function()
+			if isCinematicMode then
+				TweenService:Create(cinematicModeIndicator, TweenInfo.new(0.5), {
+					BackgroundTransparency = 1,
+					TextTransparency = 1
+				}):Play()
+			end
+		end)
+	else
+		showAllUIAfterPhoto()
+		cinematicModeIndicator.Visible = false
+		cinematicModeIndicator.BackgroundTransparency = 0.5
+		cinematicModeIndicator.TextTransparency = 0
+		if cinematicButton then
+			cinematicButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
+		end
+		if cinematicButtonText then
+			cinematicButtonText.TextColor3 = Color3.fromRGB(255, 255, 255)
+		end
+	end
+end
+
+if cinematicButton then
+	cinematicButton.MouseButton1Click:Connect(toggleCinematicMode)
+end
+
+-- P key for photo mode
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	
+	if input.KeyCode == Enum.KeyCode.P then
+		toggleCinematicMode()
+	end
+	
+	if input.KeyCode == Enum.KeyCode.Escape and isCinematicMode then
+		toggleCinematicMode()
+	end
+end)
+
+-- Exit photo mode on respawn
+Player.CharacterAdded:Connect(function()
+	if isCinematicMode then
+		isCinematicMode = false
+		showAllUIAfterPhoto()
+		cinematicModeIndicator.Visible = false
+		if cinematicButton then
+			cinematicButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
+		end
+		if cinematicButtonText then
+			cinematicButtonText.TextColor3 = Color3.fromRGB(255, 255, 255)
+		end
+	end
+end)
+
+print("📷 [CAMERA CINEMATIC] Section Loaded")
+
+-- ================================================================================
+--                     SECTION: NEW FISH DISCOVERY UI
+-- ================================================================================
+--[[
+    Shows premium UI when player catches a new fish type
+    - Cinematic banner with 3D model
+    - Rotating rays effect
+    - Simple notification for regular catches
+]]
+
+local FishDiscoveryColors = {
+	Background = Color3.fromRGB(18, 18, 22),
+	CardBg = Color3.fromRGB(28, 28, 35),
+	Success = Color3.fromRGB(67, 181, 129),
+	TextPrimary = Color3.fromRGB(255, 255, 255),
+	TextSecondary = Color3.fromRGB(163, 166, 183),
+	Common = Color3.fromRGB(163, 166, 183),
+	Uncommon = Color3.fromRGB(67, 181, 129),
+	Rare = Color3.fromRGB(88, 166, 255),
+	Epic = Color3.fromRGB(163, 108, 229),
+	Legendary = Color3.fromRGB(255, 193, 7)
+}
+
+local function showSimpleFishNotification(fishData, quantity)
+	local notifGui = Instance.new("ScreenGui")
+	notifGui.Name = "SimpleFishNotif"
+	notifGui.ResetOnSpawn = false
+	notifGui.DisplayOrder = 100
+	notifGui.Parent = playerGui
+
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(0, 320, 0, 70)
+	frame.Position = UDim2.new(1, 10, 0, 20)
+	frame.AnchorPoint = Vector2.new(0, 0)
+	frame.BackgroundColor3 = FishDiscoveryColors.CardBg
+	frame.BorderSizePixel = 0
+	frame.Parent = notifGui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 12)
+	corner.Parent = frame
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = FishDiscoveryColors[fishData.Rarity] or FishDiscoveryColors.Common
+	stroke.Thickness = 1.5
+	stroke.Transparency = 0.5
+	stroke.Parent = frame
+
+	local iconBg = Instance.new("Frame")
+	iconBg.Size = UDim2.new(0, 50, 0, 50)
+	iconBg.Position = UDim2.new(0, 10, 0.5, 0)
+	iconBg.AnchorPoint = Vector2.new(0, 0.5)
+	iconBg.BackgroundColor3 = FishDiscoveryColors.Background
+	iconBg.BorderSizePixel = 0
+	iconBg.Parent = frame
+
+	local iconCorner = Instance.new("UICorner")
+	iconCorner.CornerRadius = UDim.new(0, 8)
+	iconCorner.Parent = iconBg
+
+	local icon = Instance.new("ImageLabel")
+	icon.Size = UDim2.new(0.8, 0, 0.8, 0)
+	icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.BackgroundTransparency = 1
+	icon.Image = fishData.ImageID or ""
+	icon.ScaleType = Enum.ScaleType.Fit
+	icon.Parent = iconBg
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, -75, 1, 0)
+	label.Position = UDim2.new(0, 70, 0, 0)
+	label.BackgroundTransparency = 1
+	label.Text = string.format("%s x%d", fishData.Name, quantity)
+	label.TextSize = 15
+	label.Font = Enum.Font.GothamMedium
+	label.TextColor3 = FishDiscoveryColors.TextPrimary
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = frame
+
+	local tweenIn = TweenService:Create(frame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{Position = UDim2.new(1, -330, 0, 20)})
+	tweenIn:Play()
+
+	task.wait(3)
+
+	local tweenOut = TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		{Position = UDim2.new(1, 10, 0, 20)})
+	tweenOut:Play()
+	tweenOut.Completed:Wait()
+
+	notifGui:Destroy()
+end
+
+local function showNewDiscoveryBanner(fishID, fishData, quantity)
+	local bannerGui = Instance.new("ScreenGui")
+	bannerGui.Name = "NewFishDiscovery"
+	bannerGui.ResetOnSpawn = false
+	bannerGui.DisplayOrder = 1000
+	bannerGui.IgnoreGuiInset = true
+	bannerGui.Parent = playerGui
+
+	local rarityColor = FishDiscoveryColors[fishData.Rarity] or FishDiscoveryColors.Common
+	local rarityText = fishData.Rarity:upper()
+
+	local backdrop = Instance.new("Frame")
+	backdrop.Size = UDim2.new(1, 0, 1, 0)
+	backdrop.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	backdrop.BackgroundTransparency = 1
+	backdrop.BorderSizePixel = 0
+	backdrop.Parent = bannerGui
+
+	local card = Instance.new("Frame")
+	card.Size = UDim2.new(0.55, 0, 0.38, 0)
+	card.Position = UDim2.new(0.5, 0, 0.5, 0)
+	card.AnchorPoint = Vector2.new(0.5, 0.5)
+	card.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+	card.BackgroundTransparency = 0.1
+	card.BorderSizePixel = 0
+	card.ClipsDescendants = true
+	card.Parent = bannerGui
+	card.Visible = false
+
+	local aspectRatio = Instance.new("UIAspectRatioConstraint")
+	aspectRatio.AspectRatio = 1.8
+	aspectRatio.Parent = card
+
+	local sizeConstraint = Instance.new("UISizeConstraint")
+	sizeConstraint.MinSize = Vector2.new(380, 210)
+	sizeConstraint.MaxSize = Vector2.new(650, 360)
+	sizeConstraint.Parent = card
+
+	local cardCorner = Instance.new("UICorner")
+	cardCorner.CornerRadius = UDim.new(0, 16)
+	cardCorner.Parent = card
+
+	local cardStroke = Instance.new("UIStroke")
+	cardStroke.Color = rarityColor
+	cardStroke.Thickness = 2
+	cardStroke.Transparency = 0.2
+	cardStroke.Parent = card
+
+	-- Left side with viewport for 3D model
+	local visualContainer = Instance.new("Frame")
+	visualContainer.Size = UDim2.new(0.48, 0, 1, 0)
+	visualContainer.BackgroundTransparency = 1
+	visualContainer.Parent = card
+
+	local viewport = Instance.new("ViewportFrame")
+	viewport.Size = UDim2.new(1.3, 0, 1.3, 0)
+	viewport.Position = UDim2.new(0, -15, -0.15, 0)
+	viewport.BackgroundTransparency = 1
+	viewport.Ambient = Color3.fromRGB(200, 200, 200)
+	viewport.LightColor = Color3.fromRGB(255, 255, 255)
+	viewport.LightDirection = Vector3.new(-1, -1, -0.5)
+	viewport.Parent = visualContainer
+
+	-- Right side info
+	local infoContainer = Instance.new("Frame")
+	infoContainer.Size = UDim2.new(0.52, 0, 1, 0)
+	infoContainer.Position = UDim2.new(0.48, 0, 0, 0)
+	infoContainer.BackgroundTransparency = 1
+	infoContainer.Parent = card
+
+	local infoPadding = Instance.new("UIPadding")
+	infoPadding.PaddingTop = UDim.new(0, 18)
+	infoPadding.PaddingBottom = UDim.new(0, 18)
+	infoPadding.PaddingRight = UDim.new(0, 20)
+	infoPadding.PaddingLeft = UDim.new(0, 8)
+	infoPadding.Parent = infoContainer
+
+	local listLayout = Instance.new("UIListLayout")
+	listLayout.FillDirection = Enum.FillDirection.Vertical
+	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	listLayout.Padding = UDim.new(0, 6)
+	listLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	listLayout.Parent = infoContainer
+
+	local headerLabel = Instance.new("TextLabel")
+	headerLabel.Text = "✨ NEW DISCOVERY ✨"
+	headerLabel.Size = UDim2.new(1, 0, 0, 20)
+	headerLabel.BackgroundTransparency = 1
+	headerLabel.Font = Enum.Font.GothamBlack
+	headerLabel.TextSize = 12
+	headerLabel.TextColor3 = Color3.fromRGB(255, 255, 150)
+	headerLabel.TextXAlignment = Enum.TextXAlignment.Left
+	headerLabel.LayoutOrder = 1
+	headerLabel.Parent = infoContainer
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Text = fishData.Name
+	nameLabel.Size = UDim2.new(1, 0, 0, 40)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Font = Enum.Font.GothamBlack
+	nameLabel.TextSize = 28
+	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	nameLabel.TextWrapped = true
+	nameLabel.TextScaled = true
+	nameLabel.LayoutOrder = 2
+	nameLabel.Parent = infoContainer
+
+	local metaContainer = Instance.new("Frame")
+	metaContainer.Size = UDim2.new(1, 0, 0, 28)
+	metaContainer.BackgroundTransparency = 1
+	metaContainer.LayoutOrder = 3
+	metaContainer.Parent = infoContainer
+
+	local metaLayout = Instance.new("UIListLayout")
+	metaLayout.FillDirection = Enum.FillDirection.Horizontal
+	metaLayout.Padding = UDim.new(0, 10)
+	metaLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	metaLayout.Parent = metaContainer
+
+	local rarityBadge = Instance.new("Frame")
+	rarityBadge.BackgroundColor3 = rarityColor
+	rarityBadge.Size = UDim2.new(0, 85, 1, 0)
+	rarityBadge.Parent = metaContainer
+
+	local rarityCorner = Instance.new("UICorner")
+	rarityCorner.CornerRadius = UDim.new(0, 6)
+	rarityCorner.Parent = rarityBadge
+
+	local rarityTextLabel = Instance.new("TextLabel")
+	rarityTextLabel.Size = UDim2.new(1, 0, 1, 0)
+	rarityTextLabel.BackgroundTransparency = 1
+	rarityTextLabel.Text = rarityText
+	rarityTextLabel.Font = Enum.Font.GothamBold
+	rarityTextLabel.TextSize = 11
+	rarityTextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	rarityTextLabel.Parent = rarityBadge
+
+	local priceTag = Instance.new("TextLabel")
+	priceTag.Text = "💰 $" .. tostring(fishData.Price or 0)
+	priceTag.AutomaticSize = Enum.AutomaticSize.X
+	priceTag.Size = UDim2.new(0, 0, 1, 0)
+	priceTag.BackgroundTransparency = 1
+	priceTag.Font = Enum.Font.GothamBold
+	priceTag.TextColor3 = FishDiscoveryColors.Success
+	priceTag.TextSize = 16
+	priceTag.Parent = metaContainer
+
+	local hintLabel = Instance.new("TextLabel")
+	hintLabel.Text = "Tap to continue"
+	hintLabel.Size = UDim2.new(1, 0, 0, 18)
+	hintLabel.Position = UDim2.new(0.5, 0, 0.92, 0)
+	hintLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+	hintLabel.BackgroundTransparency = 1
+	hintLabel.Font = Enum.Font.GothamMedium
+	hintLabel.TextSize = 11
+	hintLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+	hintLabel.TextTransparency = 0.4
+	hintLabel.Parent = card
+
+	-- Try to load 3D fish model
+	local FishModelsFolder = ReplicatedStorage:FindFirstChild("FishModels") 
+		or (ReplicatedStorage:FindFirstChild("Models") and ReplicatedStorage.Models:FindFirstChild("Fish"))
+		or (ReplicatedStorage:FindFirstChild("Assets") and ReplicatedStorage.Assets:FindFirstChild("FishModels"))
+		or workspace:FindFirstChild("FishModels")
+
+	if FishModelsFolder then
+		local fishModel = FishModelsFolder:FindFirstChild(fishID)
+		if fishModel then
+			local worldModel = Instance.new("WorldModel")
+			worldModel.Parent = viewport
+			
+			local clonedModel = fishModel:Clone()
+			clonedModel.Parent = worldModel
+
+			if clonedModel:IsA("Model") then 
+				clonedModel:PivotTo(CFrame.new(0, 0, 0))
+			elseif clonedModel:IsA("BasePart") then 
+				clonedModel.CFrame = CFrame.new(0, 0, 0) 
+			end
+
+			local modelSize = clonedModel:GetExtentsSize()
+			local maxDim = math.max(modelSize.X, modelSize.Y, modelSize.Z)
+			
+			local fov = 65
+			local fillFactor = 1.15
+			local distance = (maxDim / 2) / math.tan(math.rad(fov / 2)) * fillFactor
+			
+			local cam = Instance.new("Camera")
+			cam.FieldOfView = fov
+			
+			local angle = math.rad(20)
+			local camX = distance * math.cos(angle) * 0.9
+			local camY = maxDim * 0.15
+			local camZ = distance * math.sin(angle) * 0.9 + distance * 0.5
+			
+			cam.CFrame = CFrame.new(Vector3.new(camX, camY, camZ), Vector3.new(0, 0, 0))
+			cam.Parent = viewport
+			viewport.CurrentCamera = cam
+
+			task.spawn(function()
+				while viewport.Parent do
+					if clonedModel and clonedModel.Parent then
+						local currentCF = clonedModel:GetPivot()
+						clonedModel:PivotTo(currentCF * CFrame.Angles(0, math.rad(0.8), 0))
+					end
+					task.wait(0.016)
+				end
+			end)
+		end
+	end
+
+	-- Animations
+	TweenService:Create(backdrop, TweenInfo.new(0.5), {BackgroundTransparency = 0.4}):Play()
+
+	card.Size = UDim2.new(0, 0, 0, 0)
+	card.Visible = true
+	
+	local popTween = TweenService:Create(card, 
+		TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{Size = UDim2.new(0.55, 0, 0.38, 0)}
+	)
+	popTween:Play()
+
+	-- Close button
+	local closeButton = Instance.new("TextButton")
+	closeButton.Size = UDim2.new(1, 0, 1, 0)
+	closeButton.BackgroundTransparency = 1
+	closeButton.Text = ""
+	closeButton.ZIndex = 100
+	closeButton.Parent = bannerGui
+
+	local closing = false
+	closeButton.MouseButton1Click:Connect(function()
+		if closing then return end
+		closing = true
+		
+		TweenService:Create(backdrop, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+		local closeTween = TweenService:Create(card, 
+			TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), 
+			{Size = UDim2.new(0, 0, 0, 0)}
+		)
+		closeTween:Play()
+		
+		closeTween.Completed:Wait()
+		bannerGui:Destroy()
+	end)
+end
+
+-- Hook into FishCaughtEvent for discovery UI (may already be connected, but safe to add)
+local FishCaughtEventForDiscovery = ReplicatedStorage:FindFirstChild("FishCaughtEvent")
+if not FishCaughtEventForDiscovery then
+	FishCaughtEventForDiscovery = ReplicatedStorage:WaitForChild("FishCaughtEvent", 10)
+end
+
+if FishCaughtEventForDiscovery then
+	FishCaughtEventForDiscovery.OnClientEvent:Connect(function(data)
+		print("📩 [FISH DISCOVERY] Received FishCaughtEvent on client!")
+		print("📩 [FISH DISCOVERY] Fish:", data.FishData and data.FishData.Name or "nil", "| New Discovery:", tostring(data.IsNewDiscovery))
+		
+		if data.IsNewDiscovery then
+			showNewDiscoveryBanner(data.FishID, data.FishData, data.Quantity)
+		else
+			showSimpleFishNotification(data.FishData, data.Quantity)
+		end
+	end)
+	print("✅ [FISH DISCOVERY] Connected to FishCaughtEvent")
+else
+	warn("⚠️ [FISH DISCOVERY] FishCaughtEvent not found!")
+end
+
+print("🐟 [FISH DISCOVERY UI] Section Loaded")
+
+-- ================================================================================
+--                     SECTION: FISHING REPLICATION CLIENT
+-- ================================================================================
+--[[
+    Handles visual replication of OTHER players' fishing actions
+    - Creates floaters and fishing lines for other players
+    - All animations run locally for smooth appearance
+]]
+
+local FishingRemotes = ReplicatedStorage:WaitForChild("FishingRemotes", 5)
+if FishingRemotes then
+	local PlayerThrewFloaterEvent = FishingRemotes:FindFirstChild("PlayerThrewFloater")
+	local PlayerStartedPullingEvent = FishingRemotes:FindFirstChild("PlayerStartedPulling")
+	local PlayerStoppedFishingEvent = FishingRemotes:FindFirstChild("PlayerStoppedFishing")
+
+	local otherPlayersFishing = {} -- [player] = {floater, line, etc}
+
+	local function cleanupPlayerFishing(targetPlayer)
+		local data = otherPlayersFishing[targetPlayer]
+		if not data then return end
+		
+		if data.floater then
+			pcall(function() data.floater:Destroy() end)
+		end
+		if data.lineConnection then
+			pcall(function() data.lineConnection:Disconnect() end)
+		end
+		if data.middlePoints then
+			for _, point in ipairs(data.middlePoints) do
+				pcall(function() point:Destroy() end)
+			end
+		end
+		if data.beamSegments then
+			for _, beam in ipairs(data.beamSegments) do
+				pcall(function() beam:Destroy() end)
+			end
+		end
+		if data.attachment0 then
+			pcall(function() data.attachment0:Destroy() end)
+		end
+		if data.attachment1 then
+			pcall(function() data.attachment1:Destroy() end)
+		end
+		
+		otherPlayersFishing[targetPlayer] = nil
+	end
+
+	if PlayerThrewFloaterEvent then
+		PlayerThrewFloaterEvent.OnClientEvent:Connect(function(sourcePlayer, eventData)
+			if sourcePlayer == player then return end
+			
+			cleanupPlayerFishing(sourcePlayer)
+			
+			local targetPos = eventData.TargetPos
+			if not targetPos then return end
+
+			-- Create floater for other player
+			local floaterTemplate = FloatersFolder:FindFirstChild(eventData.FloaterId or "Floater_Doll")
+			if floaterTemplate then
+				local floater = floaterTemplate:Clone()
+				floater.Name = "ReplicatedFloater_" .. sourcePlayer.Name
+				
+				if floater:IsA("Model") then
+					for _, part in ipairs(floater:GetDescendants()) do
+						if part:IsA("BasePart") then
+							part.Anchored = true
+							part.CanCollide = false
+						end
+					end
+					floater.PrimaryPart = floater:FindFirstChildWhichIsA("BasePart")
+					if floater.PrimaryPart then
+						floater:SetPrimaryPartCFrame(CFrame.new(targetPos))
+					end
+				else
+					floater.Anchored = true
+					floater.CanCollide = false
+					floater.CFrame = CFrame.new(targetPos)
+				end
+				
+				floater.Parent = workspace
+				
+				otherPlayersFishing[sourcePlayer] = {
+					floater = floater,
+					targetPos = targetPos
+				}
+			end
+		end)
+	end
+
+	if PlayerStoppedFishingEvent then
+		PlayerStoppedFishingEvent.OnClientEvent:Connect(function(sourcePlayer, eventData)
+			cleanupPlayerFishing(sourcePlayer)
+		end)
+	end
+
+	-- Cleanup when player leaves
+	Players.PlayerRemoving:Connect(function(leavingPlayer)
+		cleanupPlayerFishing(leavingPlayer)
+	end)
+
+	print("🎣 [FISHING REPLICATION] Section Loaded")
+end
+
+print("✅ [FISHING CLIENT] Fully Loaded (Combined Script)")

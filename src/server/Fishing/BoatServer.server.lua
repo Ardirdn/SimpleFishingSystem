@@ -1,6 +1,7 @@
 --[[
-	BoatServer - Server-side boat physics handler
-	Place in ServerScriptService
+	BOAT SERVER (COMBINED)
+	Combines: BoatServer + BoatSpawnerServer
+	Place in ServerScriptService > Fishing
 	
 	Handles:
 	- Auto-welding boat parts
@@ -8,21 +9,15 @@
 	- Network ownership management
 	- Physics simulation (movement, turning, buoyancy)
 	- Tilt effects (roll, pitch)
-	
-	Required Structure in Workspace:
-	Workspace/
-	└── Boats/
-	    ├── BoatModel1/
-	    │   ├── BoatArea (Part)
-	    │   ├── VehicleSeat (VehicleSeat)
-	    │   └── [Other Parts - auto welded]
-	    └── BoatModel2/
-	        └── ...
+	- Spawning boats for players
+	- Despawning previous boats
+	- Finding water position near player
 ]]
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
 
 -- Modules
 local BoatConfig = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("BoatConfig"))
@@ -36,8 +31,12 @@ local DEBUG = BoatConfig.Debug
 
 -- ==================== STATE ====================
 local activeBoats = {} -- [boatModel] = boatData
+local playerBoats = {} -- [player] = boatModel (for spawner)
 
--- ==================== DEBUG HELPER ====================
+-- ================================================================================
+--                         SECTION: DEBUG HELPER
+-- ================================================================================
+
 local function debugPrint(category, ...)
 	if not DEBUG.Enabled then return end
 	
@@ -49,7 +48,9 @@ local function debugPrint(category, ...)
 	print("[BOAT DEBUG]", ...)
 end
 
--- ==================== UTILITY FUNCTIONS ====================
+-- ================================================================================
+--                         SECTION: UTILITY FUNCTIONS
+-- ================================================================================
 
 -- Get water height at position (Terrain-based)
 local function getWaterHeightAt(position)
@@ -131,7 +132,6 @@ local function autoWeldBoat(boatModel, driverSeat)
 		end
 	end
 	
-	-- Weld complete (silent)
 	return true
 end
 
@@ -143,10 +143,10 @@ local function createBodyMovers(driverSeat)
 		if existing then existing:Destroy() end
 	end
 	
-	-- BodyGyro for rotation (now with X and Z for tilt!)
+	-- BodyGyro for rotation
 	local bodyGyro = Instance.new("BodyGyro")
 	bodyGyro.Name = "BoatGyro"
-	bodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge) -- Full control for tilt
+	bodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
 	bodyGyro.P = MOVERS.GyroP
 	bodyGyro.D = MOVERS.GyroD
 	bodyGyro.CFrame = driverSeat.CFrame
@@ -160,10 +160,10 @@ local function createBodyMovers(driverSeat)
 	bodyVelocity.Velocity = Vector3.zero
 	bodyVelocity.Parent = driverSeat
 	
-	-- BodyPosition for buoyancy (math.huge to ensure it can always reach target!)
+	-- BodyPosition for buoyancy
 	local bodyPosition = Instance.new("BodyPosition")
 	bodyPosition.Name = "BoatPosition"
-	bodyPosition.MaxForce = Vector3.new(0, math.huge, 0) -- Unlimited Y force
+	bodyPosition.MaxForce = Vector3.new(0, math.huge, 0)
 	bodyPosition.P = MOVERS.PositionP
 	bodyPosition.D = BUOYANCY.BuoyancyDamping
 	bodyPosition.Position = driverSeat.Position
@@ -176,7 +176,9 @@ local function createBodyMovers(driverSeat)
 	}
 end
 
--- ==================== BOAT SETUP ====================
+-- ================================================================================
+--                         SECTION: BOAT PHYSICS SETUP
+-- ================================================================================
 
 local function setupBoat(boatModel)
 	if activeBoats[boatModel] then return end
@@ -193,7 +195,7 @@ local function setupBoat(boatModel)
 	-- Auto-weld all parts
 	autoWeldBoat(boatModel, driverSeat)
 	
-	task.wait(0.1) -- Let physics settle
+	task.wait(0.1)
 	
 	-- Create body movers
 	local movers = createBodyMovers(driverSeat)
@@ -201,16 +203,16 @@ local function setupBoat(boatModel)
 	-- Set model primary part
 	boatModel.PrimaryPart = driverSeat
 	
-	-- Get initial Y rotation only (ignore any pitch/roll)
+	-- Get initial Y rotation only
 	local _, yRot, _ = driverSeat.CFrame:ToEulerAnglesYXZ()
 	local baseRotation = CFrame.Angles(0, yRot, 0)
 	
-	-- Create boat data with per-boat stats
+	-- Create boat data
 	local boatData = {
 		model = boatModel,
 		driverSeat = driverSeat,
 		movers = movers,
-		stats = stats, -- Per-boat settings!
+		stats = stats,
 		currentSpeed = 0,
 		currentDriver = nil,
 		baseRotation = baseRotation,
@@ -228,27 +230,20 @@ local function setupBoat(boatModel)
 		
 		if occupant then
 			local character = occupant.Parent
-			local player = Players:GetPlayerFromCharacter(character)
+			local plr = Players:GetPlayerFromCharacter(character)
 			
-			if player then
-				boatData.currentDriver = player
+			if plr then
+				boatData.currentDriver = plr
 				
-				-- Reset rotations to current
 				local _, y, _ = driverSeat.CFrame:ToEulerAnglesYXZ()
 				boatData.baseRotation = CFrame.Angles(0, y, 0)
 				boatData.boatStartTime = tick()
 				
 				pcall(function()
-					driverSeat:SetNetworkOwner(player)
+					driverSeat:SetNetworkOwner(plr)
 				end)
-				
-				-- Player started driving (silent)
 			end
 		else
-			if boatData.currentDriver then
-				-- Player stopped driving (silent)
-			end
-			
 			boatData.currentDriver = nil
 			boatData.currentSpeed = 0
 			boatData.lastThrottle = 0
@@ -262,8 +257,6 @@ local function setupBoat(boatModel)
 			end)
 		end
 	end)
-	
-	-- Setup complete
 end
 
 local function cleanupBoat(boatModel)
@@ -277,15 +270,16 @@ local function cleanupBoat(boatModel)
 	end
 	
 	activeBoats[boatModel] = nil
-	-- Cleanup complete
 end
 
--- ==================== PHYSICS LOOP ====================
+-- ================================================================================
+--                         SECTION: PHYSICS LOOP
+-- ================================================================================
 
 local function updateBoatPhysics(boatData, deltaTime)
 	local seat = boatData.driverSeat
 	local movers = boatData.movers
-	local stats = boatData.stats -- Per-boat settings!
+	local stats = boatData.stats
 	
 	if not seat or not seat.Parent then return end
 	if not movers or not movers.velocity then return end
@@ -294,7 +288,7 @@ local function updateBoatPhysics(boatData, deltaTime)
 	local steer = seat.Steer
 	local currentTime = tick() - boatData.boatStartTime
 	
-	-- ==================== SPEED CALCULATION (per-boat) ====================
+	-- ==================== SPEED CALCULATION ====================
 	if throttle == 1 then
 		boatData.currentSpeed = boatData.currentSpeed + stats.Acceleration * deltaTime * 60
 	elseif throttle == -1 then
@@ -313,7 +307,7 @@ local function updateBoatPhysics(boatData, deltaTime)
 	
 	boatData.currentSpeed = math.clamp(boatData.currentSpeed, -stats.MaxReverseSpeed, stats.MaxSpeed)
 	
-	-- ==================== TURNING (per-boat) ====================
+	-- ==================== TURNING ====================
 	if steer ~= 0 and math.abs(boatData.currentSpeed) > 0.5 then
 		local speedRatio = math.abs(boatData.currentSpeed) / stats.MaxSpeed
 		local turnRate = stats.TurnSpeed + (stats.TurnSpeedAtMax - stats.TurnSpeed) * speedRatio
@@ -330,22 +324,18 @@ local function updateBoatPhysics(boatData, deltaTime)
 		local seatPos = seat.Position
 		local waterHeight = getWaterHeightAt(seatPos)
 		
-		-- Wave multiplier (per-boat + speed-based reduction)
 		local speedRatio = math.abs(boatData.currentSpeed) / stats.MaxSpeed
 		local waveMultiplier = (stats.WaveMultiplier or 1) * (1 - (speedRatio * BUOYANCY.SpeedWaveReduction))
 		
-		-- Primary wave
 		local waveY = 0
 		if BUOYANCY.WaveEnabled then
 			waveY = math.sin(currentTime * BUOYANCY.WaveFrequency * math.pi * 2) * BUOYANCY.WaveAmplitude * waveMultiplier
 		end
 		
-		-- Secondary wave for natural variation
 		if BUOYANCY.SecondaryWaveEnabled then
 			waveY = waveY + math.sin(currentTime * BUOYANCY.SecondaryWaveFrequency * math.pi * 2) * BUOYANCY.SecondaryWaveAmplitude * waveMultiplier
 		end
 		
-		-- Target Y position (using per-boat FloatOffset!)
 		local floatOffset = stats.FloatOffset or 3
 		local targetY = waterHeight + floatOffset + waveY
 		movers.position.Position = Vector3.new(seatPos.X, targetY, seatPos.Z)
@@ -357,52 +347,40 @@ local function updateBoatPhysics(boatData, deltaTime)
 	local speedRatio = math.abs(boatData.currentSpeed) / stats.MaxSpeed
 	local waveMultiplier = (stats.WaveMultiplier or 1) * (1 - (speedRatio * BUOYANCY.SpeedWaveReduction))
 	
-	-- Roll from turning
 	if BUOYANCY.RollEnabled then
 		local turnRoll = steer * BUOYANCY.TurnRollAmount * speedRatio
-		
-		-- Roll from waves
 		local waveRoll = math.sin(currentTime * BUOYANCY.WaveRollFrequency * math.pi * 2) * BUOYANCY.WaveRollAmplitude * waveMultiplier
-		
 		targetRoll = turnRoll + waveRoll
 	end
 	
-	-- Pitch from acceleration/braking
 	if BUOYANCY.PitchEnabled then
 		local accelPitch = 0
 		
-		-- Detect acceleration state
 		if throttle == 1 and boatData.currentSpeed > 0 then
 			accelPitch = BUOYANCY.AccelPitchAmount * (1 - speedRatio)
 		elseif throttle == -1 and boatData.currentSpeed > 0 then
 			accelPitch = BUOYANCY.BrakePitchAmount
 		end
 		
-		-- Wave pitch (continuous gentle motion)
 		local wavePitch = math.cos(currentTime * BUOYANCY.WavePitchFrequency * math.pi * 2) * BUOYANCY.WavePitchAmplitude * waveMultiplier
 		
-		-- RANDOM WAVE BUMP (occasional pitch back when moving, like hitting a wave!)
 		local bumpPitch = 0
 		if BUOYANCY.WaveBumpEnabled then
-			-- Initialize bump state if needed
 			if not boatData.waveBumpTime then
 				boatData.waveBumpTime = 0
 				boatData.waveBumpActive = false
 			end
 			
-			-- Check if bump is currently active
 			if boatData.waveBumpActive then
 				local bumpElapsed = tick() - boatData.waveBumpTime
 				if bumpElapsed < BUOYANCY.WaveBumpDuration then
-					-- Smooth bump curve (quick up, slow down)
 					local bumpProgress = bumpElapsed / BUOYANCY.WaveBumpDuration
-					local bumpCurve = math.sin(bumpProgress * math.pi) -- 0 -> 1 -> 0
+					local bumpCurve = math.sin(bumpProgress * math.pi)
 					bumpPitch = BUOYANCY.WaveBumpAmount * bumpCurve
 				else
 					boatData.waveBumpActive = false
 				end
 			else
-				-- Random chance to start new bump when moving forward
 				if boatData.currentSpeed > (BUOYANCY.WaveBumpMinSpeed or 3) then
 					if math.random() < (BUOYANCY.WaveBumpChance or 0.02) then
 						boatData.waveBumpActive = true
@@ -415,22 +393,16 @@ local function updateBoatPhysics(boatData, deltaTime)
 		targetPitch = accelPitch + wavePitch + bumpPitch
 	end
 	
-	-- Smooth roll and pitch transitions
-	local smoothFactor = deltaTime * 5 -- Adjust for smoother/snappier response
+	local smoothFactor = deltaTime * 5
 	boatData.smoothRoll = boatData.smoothRoll + (targetRoll - boatData.smoothRoll) * smoothFactor
 	boatData.smoothPitch = boatData.smoothPitch + (targetPitch - boatData.smoothPitch) * smoothFactor
 	
-	debugPrint("tilt", string.format("Roll: %.1f°, Pitch: %.1f°", boatData.smoothRoll, boatData.smoothPitch))
-	
-	-- Apply rotation with tilt
 	local rollRad = math.rad(boatData.smoothRoll)
 	local pitchRad = math.rad(boatData.smoothPitch)
 	
-	-- Combine base Y rotation with roll (Z) and pitch (X)
 	local finalCFrame = boatData.baseRotation * CFrame.Angles(pitchRad, 0, rollRad)
 	movers.gyro.CFrame = finalCFrame
 	
-	-- Store throttle for next frame
 	boatData.lastThrottle = throttle
 end
 
@@ -445,7 +417,241 @@ RunService.Heartbeat:Connect(function(deltaTime)
 	end
 end)
 
--- ==================== BOAT FOLDER DETECTION ====================
+-- ================================================================================
+--                         SECTION: BOAT SPAWNER
+-- ================================================================================
+
+-- Create remote events for spawner
+local BoatSpawnerFolder = Instance.new("Folder")
+BoatSpawnerFolder.Name = "BoatSpawner"
+BoatSpawnerFolder.Parent = ReplicatedStorage
+
+local SpawnBoatEvent = Instance.new("RemoteEvent")
+SpawnBoatEvent.Name = "SpawnBoat"
+SpawnBoatEvent.Parent = BoatSpawnerFolder
+
+local GetBoatsEvent = Instance.new("RemoteFunction")
+GetBoatsEvent.Name = "GetBoats"
+GetBoatsEvent.Parent = BoatSpawnerFolder
+
+-- ==================== SPAWNER CONSTANTS ====================
+local BOAT_LENGTH = 15
+local BOAT_WIDTH = 8
+local SAFETY_MARGIN = 30
+local MIN_SPAWN_DISTANCE = 20
+local MAX_SEARCH_RADIUS = 150
+
+-- ==================== SPAWNER UTILITY ====================
+
+local function isPointOnWater(x, z)
+	local terrain = workspace:FindFirstChildOfClass("Terrain")
+	if not terrain then return false, PHYSICS.DefaultWaterHeight end
+	
+	local rayOrigin = Vector3.new(x, 200, z)
+	local rayDirection = Vector3.new(0, -400, 0)
+	
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Include
+	rayParams.FilterDescendantsInstances = {terrain}
+	
+	local result = workspace:Raycast(rayOrigin, rayDirection, rayParams)
+	if result and result.Material == Enum.Material.Water then
+		return true, result.Position.Y
+	end
+	
+	return false, nil
+end
+
+local function checkSpawnAreaGrid(centerX, centerZ)
+	local halfLength = (BOAT_LENGTH + SAFETY_MARGIN) / 2
+	local halfWidth = (BOAT_WIDTH + SAFETY_MARGIN) / 2
+	
+	local waterCount = 0
+	local totalHeight = 0
+	local totalPoints = 25
+	
+	for i = -2, 2 do
+		for j = -2, 2 do
+			local checkX = centerX + (i * halfLength / 2)
+			local checkZ = centerZ + (j * halfWidth / 2)
+			
+			local isWater, waterY = isPointOnWater(checkX, checkZ)
+			if isWater then
+				waterCount = waterCount + 1
+				totalHeight = totalHeight + waterY
+			end
+		end
+	end
+	
+	local score = waterCount / totalPoints
+	local avgHeight = waterCount > 0 and (totalHeight / waterCount) or PHYSICS.DefaultWaterHeight
+	
+	return score, avgHeight, waterCount
+end
+
+local function findWaterPositionNear(playerPosition)
+	local bestPosition = nil
+	local bestScore = 0
+	local bestHeight = PHYSICS.DefaultWaterHeight
+	
+	for radius = MIN_SPAWN_DISTANCE, MAX_SEARCH_RADIUS, 8 do
+		for angle = 0, 345, 15 do
+			local rad = math.rad(angle)
+			local testX = playerPosition.X + math.cos(rad) * radius
+			local testZ = playerPosition.Z + math.sin(rad) * radius
+			
+			local score, avgHeight, waterPoints = checkSpawnAreaGrid(testX, testZ)
+			
+			if score >= 1.0 then
+				return Vector3.new(testX, avgHeight, testZ), true
+			end
+			
+			if score > bestScore then
+				bestScore = score
+				bestPosition = Vector3.new(testX, avgHeight, testZ)
+				bestHeight = avgHeight
+			end
+		end
+	end
+	
+	if bestScore >= 0.8 and bestPosition then
+		return bestPosition, false
+	end
+	
+	for radius = MAX_SEARCH_RADIUS, MAX_SEARCH_RADIUS + 50, 10 do
+		for angle = 0, 345, 30 do
+			local rad = math.rad(angle)
+			local testX = playerPosition.X + math.cos(rad) * radius
+			local testZ = playerPosition.Z + math.sin(rad) * radius
+			
+			local isWater, waterY = isPointOnWater(testX, testZ)
+			if isWater then
+				return Vector3.new(testX, waterY, testZ), false
+			end
+		end
+	end
+	
+	warn("⚠️ [BOAT SPAWNER] No water found! Using default position")
+	return Vector3.new(
+		playerPosition.X + MIN_SPAWN_DISTANCE, 
+		PHYSICS.DefaultWaterHeight, 
+		playerPosition.Z + MIN_SPAWN_DISTANCE
+	), false
+end
+
+local function getBoatTemplates()
+	local templates = ServerStorage:FindFirstChild("BoatTemplates")
+	if not templates then
+		templates = Instance.new("Folder")
+		templates.Name = "BoatTemplates"
+		templates.Parent = ServerStorage
+		warn("⚠️ [BOAT SPAWNER] Created BoatTemplates folder in ServerStorage - add boat models there!")
+	end
+	return templates
+end
+
+local function getBoatsFolder()
+	local folder = workspace:FindFirstChild(FOLDERS.BoatsFolder)
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = FOLDERS.BoatsFolder
+		folder.Parent = workspace
+	end
+	return folder
+end
+
+-- ==================== SPAWN LOGIC ====================
+
+local function despawnBoat(plr)
+	local existingBoat = playerBoats[plr]
+	if existingBoat and existingBoat.Parent then
+		existingBoat:Destroy()
+	end
+	playerBoats[plr] = nil
+end
+
+local function spawnBoat(plr, boatName)
+	despawnBoat(plr)
+	
+	local templates = getBoatTemplates()
+	local template = templates:FindFirstChild(boatName)
+	
+	if not template then
+		warn(string.format("⚠️ [BOAT SPAWNER] Template '%s' not found!", boatName))
+		return false, "Boat template not found"
+	end
+	
+	local character = plr.Character
+	if not character then
+		return false, "Character not found"
+	end
+	
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if not humanoidRootPart then
+		return false, "HumanoidRootPart not found"
+	end
+	
+	local waterPos = findWaterPositionNear(humanoidRootPart.Position)
+	
+	local stats = BoatConfig.GetBoatStats(boatName)
+	local floatOffset = stats.FloatOffset or 3
+	
+	local newBoat = template:Clone()
+	newBoat.Name = boatName
+	
+	local driverSeat = newBoat:FindFirstChild(FOLDERS.DriverSeatName)
+	if driverSeat then
+		local spawnY = waterPos.Y + floatOffset
+		local spawnPos = Vector3.new(waterPos.X, spawnY, waterPos.Z)
+		
+		local dirFromPlayer = (spawnPos - humanoidRootPart.Position).Unit
+		local lookAt = spawnPos + Vector3.new(dirFromPlayer.X, 0, dirFromPlayer.Z)
+		
+		newBoat:PivotTo(CFrame.new(spawnPos, lookAt))
+	else
+		newBoat:PivotTo(CFrame.new(waterPos.X, waterPos.Y + floatOffset, waterPos.Z))
+	end
+	
+	newBoat.Parent = getBoatsFolder()
+	
+	playerBoats[plr] = newBoat
+	newBoat:SetAttribute("Owner", plr.UserId)
+	
+	print(string.format("🚤 [BOAT SPAWNER] %s spawned %s", plr.Name, boatName))
+	
+	return true, "Boat spawned!"
+end
+
+-- ==================== SPAWNER REMOTE HANDLERS ====================
+
+SpawnBoatEvent.OnServerEvent:Connect(function(plr, boatName)
+	if typeof(boatName) ~= "string" then return end
+	spawnBoat(plr, boatName)
+end)
+
+GetBoatsEvent.OnServerInvoke = function(plr)
+	local templates = getBoatTemplates()
+	local boatList = {}
+	
+	for _, template in ipairs(templates:GetChildren()) do
+		if template:IsA("Model") then
+			local stats = BoatConfig.GetBoatStats(template.Name)
+			table.insert(boatList, {
+				Name = template.Name,
+				DisplayName = stats.DisplayName or template.Name,
+				Price = stats.Price or 0,
+				MaxSpeed = stats.MaxSpeed or 15,
+				Acceleration = stats.Acceleration or 0.1,
+			})
+		end
+	end
+	
+	return boatList
+end
+
+-- ================================================================================
+--                         SECTION: BOAT FOLDER DETECTION
+-- ================================================================================
 
 local function scanBoatsFolder()
 	local boatsFolder = workspace:FindFirstChild(FOLDERS.BoatsFolder)
@@ -482,7 +688,6 @@ local function scanBoatsFolder()
 		end
 	end)
 	
-	-- Now monitoring boats folder
 	return true
 end
 
@@ -493,8 +698,6 @@ local function waitForBoatsFolder()
 	if boatsFolder then
 		scanBoatsFolder()
 	else
-		-- Waiting for boats folder...
-		
 		local conn
 		conn = workspace.ChildAdded:Connect(function(child)
 			if child.Name == FOLDERS.BoatsFolder then
@@ -513,6 +716,12 @@ local function waitForBoatsFolder()
 	end
 end
 
+-- ==================== CLEANUP ====================
+
+Players.PlayerRemoving:Connect(function(plr)
+	despawnBoat(plr)
+end)
+
 waitForBoatsFolder()
 
-print("🚤 [BOAT SERVER] Initialized")
+print("🚤 [BOAT SERVER] Initialized (Combined Physics + Spawner)")
