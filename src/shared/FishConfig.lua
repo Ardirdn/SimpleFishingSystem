@@ -27,6 +27,18 @@ FishConfig.RarityBasePrices = {
 	Legendary = 5000
 }
 
+--[[
+    LOCATION SYSTEM:
+    - "Anywhere" : Bisa didapat di mana saja (default untuk Common/Uncommon)
+    - "VolcanoArea" : Lebih mudah didapat di Volcano Area
+    - "IceArea" : Lebih mudah didapat di Ice Area
+    - "DeepSeaArea" : Lebih mudah didapat di Deep Sea Area
+    - "CoralReefArea" : Lebih mudah didapat di Coral Reef Area
+    
+    Note: Location hanya mempengaruhi BONUS chance. Ikan tetap bisa didapat
+    di luar area-nya, tapi chance-nya lebih kecil (kecuali ExclusiveFish).
+]]
+
 FishConfig.Fish = {
 	["Achilles_Tang"] = {
 		Name = "Botana Achilles",
@@ -47,8 +59,8 @@ FishConfig.Fish = {
 		Name = "Pemancing",
 		Rarity = "Legendary",
 		Price = 0,
-		ImageID = "rbxassetid://85087841821673"
-
+		ImageID = "rbxassetid://85087841821673",
+		Location = "DeepSeaArea" -- Bonus di Deep Sea
 	},
 	["Archer_Fish"] = {
 		Name = "Pemanah",
@@ -362,8 +374,8 @@ FishConfig.Fish = {
 		Name = "Naga",
 		Rarity = "Legendary",
 		Price = 0,
-		ImageID = "rbxassetid://80969558424595"
-
+		ImageID = "rbxassetid://80969558424595",
+		Location = "VolcanoArea" -- Bonus di Volcano
 	},
 	["Dugong"] = {
 		Name = "Duyung",
@@ -537,8 +549,8 @@ FishConfig.Fish = {
 		Name = "Paus Pembunuh",
 		Rarity = "Legendary",
 		Price = 0,
-		ImageID = "rbxassetid://97856883337811"
-
+		ImageID = "rbxassetid://97856883337811",
+		Location = "IceArea" -- Bonus di Ice
 	},
 	["Kole_Tang"] = {
 		Name = " Botana Kole",
@@ -572,8 +584,8 @@ FishConfig.Fish = {
 		Name = " Singa",
 		Rarity = "Legendary",
 		Price = 0,
-		ImageID = "rbxassetid://101546489431818"
-
+		ImageID = "rbxassetid://101546489431818",
+		Location = "VolcanoArea" -- Bonus di Volcano
 	},
 	["Lizardfish"] = {
 		Name = " Kadal",

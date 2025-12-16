@@ -1045,11 +1045,18 @@ local function startPulling()
 		if progress <= 0 or elapsed > timeLimit then
 			print("gagal mendapatkan ikan")
 
-			-- FIRE TO SERVER (RemoteEvent)
+			-- FIRE TO SERVER (RemoteEvent) with floater position
 			local FishingSuccessEvent = ReplicatedStorage:FindFirstChild("FishingSuccessEvent")
 			if FishingSuccessEvent then
+				local floaterPos = nil
+				if currentFloater then
+					local floaterPart = currentFloater:IsA("Model") and currentFloater.PrimaryPart or currentFloater
+					if floaterPart then
+						floaterPos = floaterPart.Position
+					end
+				end
 				print("📡 [DEBUG CLIENT] Firing FishingSuccessEvent to server (FAIL)")
-				FishingSuccessEvent:FireServer(false) -- FireServer, bukan Fire!
+				FishingSuccessEvent:FireServer(false, floaterPos) -- Include floater position
 			else
 				warn("⚠️ FishingSuccessEvent not found!")
 			end
@@ -1101,11 +1108,18 @@ local function startPulling()
 
 			-- (UIs sudah di-close saat pulling start)
 
-			-- FIRE TO SERVER (RemoteEvent)
+			-- FIRE TO SERVER (RemoteEvent) with floater position
 			local FishingSuccessEvent = ReplicatedStorage:FindFirstChild("FishingSuccessEvent")
 			if FishingSuccessEvent then
-				print("📡 [DEBUG CLIENT] Firing FishingSuccessEvent to server (SUCCESS)")
-				FishingSuccessEvent:FireServer(true) -- FireServer, bukan Fire!
+				local floaterPos = nil
+				if currentFloater then
+					local floaterPart = currentFloater:IsA("Model") and currentFloater.PrimaryPart or currentFloater
+					if floaterPart then
+						floaterPos = floaterPart.Position
+					end
+				end
+				print("📡 [DEBUG CLIENT] Firing FishingSuccessEvent to server (SUCCESS) at position:", floaterPos)
+				FishingSuccessEvent:FireServer(true, floaterPos) -- Include floater position
 			else
 				warn("⚠️ FishingSuccessEvent not found!")
 			end

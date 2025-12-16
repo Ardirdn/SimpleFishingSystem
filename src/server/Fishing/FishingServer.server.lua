@@ -16,6 +16,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local FishConfig = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishConfig"))
 local DataHandler = require(script.Parent.Parent.DataHandler)
 
+-- Fish Area System for area-based fish rewards
+local FishAreaSystem = nil
+pcall(function()
+	FishAreaSystem = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishAreaSystem"))
+end)
+
 local FishingRodsFolder = ReplicatedStorage:WaitForChild("FishingRods")
 local RodsFolder = FishingRodsFolder:WaitForChild("Rods")
 
@@ -208,7 +214,7 @@ end
 --                         SECTION: FISH REWARD SYSTEM
 -- ================================================================================
 
-local function giveFishReward(player, success)
+local function giveFishReward(player, success, floaterPosition)
 	local data = DataHandler:GetData(player)
 	if not data then 
 		warn("⚠️ No player data for", player.Name)
@@ -219,8 +225,19 @@ local function giveFishReward(player, success)
 		return
 	end
 
-	-- Get random fish
-	local fishId, fishData = FishConfig.GetRandomFish()
+	-- Get random fish (with area modifiers if available)
+	local fishId, fishData, areaName
+	
+	if FishAreaSystem and floaterPosition then
+		-- Use area-based fish selection
+		fishId, fishData, areaName = FishAreaSystem.GetRandomFishInArea(floaterPosition)
+		if areaName then
+			print(string.format("🎣 [FISHING SERVER] Player %s fishing in %s area!", player.Name, areaName))
+		end
+	else
+		-- Fallback to normal random fish
+		fishId, fishData = FishConfig.GetRandomFish()
+	end
 
 	if not fishId or not fishData then
 		warn("⚠️ No fish data available from FishConfig!")
@@ -259,8 +276,8 @@ local function giveFishReward(player, success)
 	local fishCount = fishInventory[fishId]
 
 	-- Notify client
-	print(string.format("🐟 [FISHING SERVER] Sending FishCaughtEvent to %s: %s (%s) | New Discovery: %s", 
-		player.Name, fishData.Name, fishId, tostring(isNewDiscovery)))
+	print(string.format("🐟 [FISHING SERVER] Sending FishCaughtEvent to %s: %s (%s) | New Discovery: %s | Area: %s", 
+		player.Name, fishData.Name, fishId, tostring(isNewDiscovery), areaName or "Open Waters"))
 	
 	FishCaughtEvent:FireClient(player, {
 		FishID = fishId,
@@ -268,13 +285,14 @@ local function giveFishReward(player, success)
 		IsNewDiscovery = isNewDiscovery,
 		Quantity = 1,
 		FishCount = fishCount,
-		Price = fishData.Price or 0
+		Price = fishData.Price or 0,
+		AreaName = areaName -- Include area name for client display
 	})
 end
 
--- Remote handler for fishing success
-FishingSuccessEvent.OnServerEvent:Connect(function(player, success)
-	giveFishReward(player, success)
+-- Remote handler for fishing success (now receives floater position)
+FishingSuccessEvent.OnServerEvent:Connect(function(player, success, floaterPosition)
+	giveFishReward(player, success, floaterPosition)
 end)
 
 -- Get fish inventory
